@@ -65,7 +65,7 @@ const VerifyCode = () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ code, number: phoneNumber }),
+				body: JSON.stringify({ code, number: phoneNumber, actor: "user" }),
 			});
 			const body = await response.json();
 			if (body.success) {
