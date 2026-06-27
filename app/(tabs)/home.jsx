@@ -27,6 +27,12 @@ const HomePage = () => {
 		fetchBalance();
 	}, []);
 
+	useEffect(() => {
+		if (error && error.includes("401")) {
+			SecureStore.deleteItemAsync("authToken").then(() => router.replace("/"));
+		}
+	}, [error]);
+
 	const fetchBalance = async () => {
 		try {
 			const token = await SecureStore.getItemAsync("authToken");
@@ -95,7 +101,7 @@ const HomePage = () => {
 								<View style={styles.actionCardIcon}>
 									<Feather name="arrow-down" size={18} color={colors.cardBackground} />
 								</View>
-								<Text style={styles.actionCardText}>Credit Wallet</Text>
+								<Text style={styles.actionCardText}>Load Money</Text>
 							</TouchableOpacity>
 
 							{/* New Print Card */}

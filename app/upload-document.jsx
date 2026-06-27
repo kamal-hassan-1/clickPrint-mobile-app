@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
 import DocumentCard from "./components/uploadDocument/DocumentCard";
@@ -19,9 +19,11 @@ const API_BASE_URL = config.apiBaseUrl;
 
 const UploadDocument = () => {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams();
 	const [documents, setDocuments] = useState([]);
-	const [loading, setLoading] = useState(false);
+	const [picking, setPicking] = useState(false);
+	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState(null);
 	const shopId = params.shopId;
 	const shopName = params.shopName;
@@ -36,7 +38,7 @@ const UploadDocument = () => {
 	const handleDocumentPick = async () => {
 		try {
 			setError(null);
-			setLoading(true);
+			setPicking(true);
 
 			const result = await DocumentPicker.getDocumentAsync({
 				type: [
@@ -66,7 +68,7 @@ const UploadDocument = () => {
 			console.error("Error picking document:", err);
 			setError("Failed to pick document. Please try again.");
 		} finally {
-			setLoading(false);
+			setPicking(false);
 		}
 	};
 
@@ -74,15 +76,8 @@ const UploadDocument = () => {
 		setDocuments((prev) => prev.filter((_, i) => i !== index));
 	};
 
-	const handleRemoveAll = () => {
-		Alert.alert("Remove All", "Are you sure you want to remove all documents?", [
-			{ text: "Cancel", style: "cancel" },
-			{ text: "Remove All", style: "destructive", onPress: () => setDocuments([]) },
-		]);
-	};
-
 	const handleContinue = async () => {
-		setLoading(true);
+		setUploading(true);
 		setError(null);
 		const failedDocs = [];
 		const documentArray = [];
@@ -112,7 +107,7 @@ const UploadDocument = () => {
 			console.error("Error uploading documents:", err);
 			setError("Failed to upload documents. Please try again.");
 		} finally {
-			setLoading(false);
+			setUploading(false);
 		}
 	};
 
@@ -142,7 +137,6 @@ const UploadDocument = () => {
 
 	const hasDocuments = documents.length > 0;
 	const allNamesValid = documents.every((d) => d.name.trim());
-	const totalSize = documents.reduce((sum, d) => sum + (d.file.size || 0), 0);
 
 	//----------------------------------- RENDER -----------------------------------//
 
@@ -158,10 +152,10 @@ const UploadDocument = () => {
 			</View>
 			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 				<View style={styles.section}>
-					<Text style={styles.sectionTitle}>Documents {hasDocuments ? `(${documents.length})` : ""}</Text>
+					<Text style={styles.sectionTitle}>Documents</Text>
 
 					{/* Empty state - upload area */}
-					{!hasDocuments && !loading && (
+					{!hasDocuments && !picking && (
 						<TouchableOpacity style={styles.uploadArea} onPress={handleDocumentPick}>
 							<Feather name="upload-cloud" size={48} color={colors.primary} />
 							<Text style={styles.uploadText}>Upload Your Documents</Text>
@@ -169,12 +163,20 @@ const UploadDocument = () => {
 						</TouchableOpacity>
 					)}
 
-					{/* Loading state */}
-					{loading && (
+					{/* Loading state - document picker only */}
+					{picking && (
 						<View style={[styles.uploadArea, styles.uploadAreaFilled]}>
 							<ActivityIndicator size="large" color={colors.primary} />
 							<Text style={styles.uploadLoadingText}>Processing...</Text>
 						</View>
+					)}
+
+					{/* Add more files button */}
+					{hasDocuments && !picking && (
+						<TouchableOpacity style={styles.addMoreButton} onPress={handleDocumentPick}>
+							<Feather name="plus-circle" size={20} color={colors.primary} />
+							<Text style={styles.addMoreButtonText}>Add More Documents</Text>
+						</TouchableOpacity>
 					)}
 
 					{/* Document cards list */}
@@ -186,14 +188,6 @@ const UploadDocument = () => {
 						</View>
 					)}
 
-					{/* Add more files button */}
-					{hasDocuments && !loading && (
-						<TouchableOpacity style={styles.addMoreButton} onPress={handleDocumentPick}>
-							<Feather name="plus-circle" size={20} color={colors.primary} />
-							<Text style={styles.addMoreButtonText}>Add More Files</Text>
-						</TouchableOpacity>
-					)}
-
 					{error && (
 						<View style={styles.errorBox}>
 							<Feather name="alert-circle" size={18} color={colors.printRequest} />
@@ -202,43 +196,20 @@ const UploadDocument = () => {
 					)}
 				</View>
 
-				{/* Summary Card */}
-				{hasDocuments && (
-					<View style={styles.summaryCard}>
-						<View style={styles.summaryItem}>
-							<Text style={styles.summaryLabel}>Shop</Text>
-							<Text style={styles.summaryValue}>{shopName}</Text>
-						</View>
-						<View style={styles.summaryDivider} />
-						<View style={styles.summaryItem}>
-							<Text style={styles.summaryLabel}>Total Documents</Text>
-							<Text style={styles.summaryValue}>
-								{documents.length} file{documents.length !== 1 ? "s" : ""}
-							</Text>
-						</View>
-						<View style={styles.summaryDivider} />
-						<View style={styles.summaryItem}>
-							<Text style={styles.summaryLabel}>Total Size</Text>
-							<Text style={styles.summaryValue}>{(totalSize / 1024).toFixed(2)} KB</Text>
-						</View>
-					</View>
-				)}
 			</ScrollView>
-			<View style={styles.footer}>
+			<View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
 				<TouchableOpacity
-					style={[styles.continueButton, (!hasDocuments || !allNamesValid || loading) && styles.continueButtonDisabled]}
+					style={[styles.continueButton, (!hasDocuments || !allNamesValid || uploading) && styles.continueButtonDisabled]}
 					onPress={handleContinue}
-					disabled={!hasDocuments || !allNamesValid || loading}
+					disabled={!hasDocuments || !allNamesValid || uploading}
 				>
-					<Text style={styles.continueButtonText}>Continue</Text>
-					<Feather name="arrow-right" size={20} color={colors.cardBackground} />
+					{uploading ? (
+						<ActivityIndicator color={colors.cardBackground} />
+					) : (
+						<Text style={styles.continueButtonText}>Upload</Text>
+					)}
 				</TouchableOpacity>
 
-				{hasDocuments && (
-					<TouchableOpacity style={styles.removeButton} onPress={handleRemoveAll}>
-						<Text style={styles.removeButtonText}>Remove All Documents</Text>
-					</TouchableOpacity>
-				)}
 			</View>
 		</SafeAreaView>
 	);
@@ -331,7 +302,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",
-		marginTop: 14,
+		marginBottom: 14,
 		paddingVertical: 14,
 		paddingHorizontal: 20,
 		borderWidth: 1.5,
@@ -361,37 +332,6 @@ const styles = StyleSheet.create({
 		color: colors.printRequest,
 		flex: 1,
 		lineHeight: 18,
-	},
-
-	// Summary card
-	summaryCard: {
-		backgroundColor: colors.background,
-		borderRadius: 16,
-		padding: 16,
-		borderWidth: 1,
-		borderColor: colors.borderLight,
-		marginBottom: 20,
-	},
-	summaryItem: {
-		paddingVertical: 8,
-	},
-	summaryLabel: {
-		fontSize: 12,
-		fontWeight: "600",
-		color: colors.textSecondary,
-		marginBottom: 4,
-		textTransform: "uppercase",
-		letterSpacing: 0.5,
-	},
-	summaryValue: {
-		fontSize: 14,
-		fontWeight: "600",
-		color: colors.textPrimary,
-	},
-	summaryDivider: {
-		height: 1,
-		backgroundColor: colors.borderLight,
-		marginVertical: 12,
 	},
 
 	// Footer
@@ -429,19 +369,6 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontWeight: "700",
 		color: colors.cardBackground,
-	},
-	removeButton: {
-		paddingVertical: 12,
-		paddingHorizontal: 20,
-		borderWidth: 1,
-		borderColor: colors.printRequest,
-		borderRadius: 12,
-		alignItems: "center",
-	},
-	removeButtonText: {
-		fontSize: 14,
-		fontWeight: "600",
-		color: colors.printRequest,
 	},
 });
 

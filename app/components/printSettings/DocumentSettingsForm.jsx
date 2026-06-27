@@ -27,6 +27,7 @@ const isValidAdvancedRange = (value) => {
 //----------------------------------- COMPONENT -----------------------------------//
 
 const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, settings, onSettingsChange, onSubmitAll, onMoveNext, onCreateJob, loading, error }) => {
+	const extension = documentName.includes(".") ? documentName.split(".").pop().toUpperCase() : "FILE";
 	const [pageRange, setPageRange] = useState(settings.pageSelection ? "custom" : "all");
 	const [startPage, setStartPage] = useState("");
 	const [endPage, setEndPage] = useState("");
@@ -133,22 +134,62 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 			keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
 		>
 			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-				{/* Summary Card */}
-				<View style={styles.summaryCard}>
-					<View style={styles.summaryItem}>
-						<Text style={styles.summaryLabel}>Document: </Text>
-						<Text style={styles.summaryValue}>[ {documentName.split(" ").slice(0, 2).join(" ").slice(0, 20)} ... ]</Text>
+				{/* Document Card */}
+				<View style={styles.documentCard}>
+					<View style={styles.documentIconContainer}>
+						<Feather name="file-text" size={22} color={colors.primary} />
+						<Text style={styles.extensionBadge}>{extension}</Text>
 					</View>
-					<View style={styles.summaryDivider} />
-					<View style={styles.summaryItem}>
-						<Text style={styles.summaryLabel}>No. of Document: </Text>
-						<Text style={styles.summaryValue}>
-							{documentNumber}/{totalDocuments}
-						</Text>
-					</View>
+					<Text style={styles.documentName}>{documentName}</Text>
 				</View>
 
 				<View style={styles.settingsSection}>
+					{/* Pages Per Sheet */}
+					<View style={styles.settingRow}>
+						<Text style={styles.settingLabel}>Pages per Sheet</Text>
+						<TouchableOpacity style={styles.dropdownButton} onPress={() => setShowPagesPerSheetDropdown(true)}>
+							<Text style={styles.dropdownButtonText}>{pagesPerSheet}</Text>
+							<Feather name="chevron-down" size={18} color={colors.textPrimary} />
+						</TouchableOpacity>
+					</View>
+
+					<Modal visible={showPagesPerSheetDropdown} transparent animationType="fade" onRequestClose={() => setShowPagesPerSheetDropdown(false)}>
+						<TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPagesPerSheetDropdown(false)}>
+							<View style={styles.dropdownModal}>
+								<Text style={styles.dropdownModalTitle}>Pages per Sheet</Text>
+								{[1, 2, 4, 6, 9, 16].map((num) => (
+									<TouchableOpacity
+										key={num}
+										style={[styles.dropdownOption, pagesPerSheet === num && styles.dropdownOptionActive]}
+										onPress={() => {
+											onSettingsChange("pagesPerSheet", num);
+											setShowPagesPerSheetDropdown(false);
+										}}
+									>
+										<Text style={[styles.dropdownOptionText, pagesPerSheet === num && styles.dropdownOptionTextActive]}>
+											{num}
+										</Text>
+										{pagesPerSheet === num && <Feather name="check" size={18} color={colors.printRequest} />}
+									</TouchableOpacity>
+								))}
+							</View>
+						</TouchableOpacity>
+					</Modal>
+
+					{/* Number of Copies */}
+					<View style={styles.settingRow}>
+						<Text style={styles.settingLabel}>Number of Copies</Text>
+						<View style={styles.copiesContainer}>
+							<TouchableOpacity style={styles.copiesButton} onPress={() => handleCopiesChange(-1)}>
+								<Feather name="minus" size={20} color={colors.textPrimary} />
+							</TouchableOpacity>
+							<Text style={styles.copiesValue}>{numberOfCopies}</Text>
+							<TouchableOpacity style={styles.copiesButton} onPress={() => handleCopiesChange(1)}>
+								<Feather name="plus" size={20} color={colors.textPrimary} />
+							</TouchableOpacity>
+						</View>
+					</View>
+
 					{/* Color Mode */}
 					<SettingRow
 						label="Color Mode"
@@ -164,8 +205,8 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 					<SettingRow
 						label="Orientation"
 						options={[
-							{ label: "Portrait", value: "portrait" },
 							{ label: "Landscape", value: "landscape" },
+							{ label: "Portrait", value: "portrait" },
 						]}
 						selectedValue={orientation}
 						onSelect={(val) => onSettingsChange("orientation", val)}
@@ -186,8 +227,8 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 					<SettingRow
 						label="Page Size"
 						options={[
+							{ label: "A3", value: "a3" },
 							{ label: "A4", value: "a4" },
-							{ label: "Letter", value: "letter" },
 						]}
 						selectedValue={pageSize}
 						onSelect={(val) => onSettingsChange("pageType", val)}
@@ -198,16 +239,16 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 						<Text style={styles.settingLabel}>Page Range</Text>
 						<View style={styles.buttonsContainer}>
 							<TouchableOpacity
-								style={[styles.optionButton, pageRange === "all" && styles.optionButtonActive]}
-								onPress={() => handlePageRangeChange("all")}
-							>
-								<Text style={[styles.optionButtonText, pageRange === "all" && styles.optionButtonTextActive]}>All</Text>
-							</TouchableOpacity>
-							<TouchableOpacity
 								style={[styles.optionButton, pageRange === "custom" && styles.optionButtonActive]}
 								onPress={() => handlePageRangeChange("custom")}
 							>
 								<Text style={[styles.optionButtonText, pageRange === "custom" && styles.optionButtonTextActive]}>Custom</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.optionButton, pageRange === "all" && styles.optionButtonActive]}
+								onPress={() => handlePageRangeChange("all")}
+							>
+								<Text style={[styles.optionButtonText, pageRange === "all" && styles.optionButtonTextActive]}>All</Text>
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -289,52 +330,6 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 							)}
 						</View>
 					)}
-
-					{/* Pages Per Sheet */}
-					<View style={styles.settingRow}>
-						<Text style={styles.settingLabel}>Pages per Sheet</Text>
-						<TouchableOpacity style={styles.dropdownButton} onPress={() => setShowPagesPerSheetDropdown(true)}>
-							<Text style={styles.dropdownButtonText}>{pagesPerSheet}</Text>
-							<Feather name="chevron-down" size={18} color={colors.textPrimary} />
-						</TouchableOpacity>
-					</View>
-
-					<Modal visible={showPagesPerSheetDropdown} transparent animationType="fade" onRequestClose={() => setShowPagesPerSheetDropdown(false)}>
-						<TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPagesPerSheetDropdown(false)}>
-							<View style={styles.dropdownModal}>
-								<Text style={styles.dropdownModalTitle}>Pages per Sheet</Text>
-								{[1, 2, 4, 6, 9, 16].map((num) => (
-									<TouchableOpacity
-										key={num}
-										style={[styles.dropdownOption, pagesPerSheet === num && styles.dropdownOptionActive]}
-										onPress={() => {
-											onSettingsChange("pagesPerSheet", num);
-											setShowPagesPerSheetDropdown(false);
-										}}
-									>
-										<Text style={[styles.dropdownOptionText, pagesPerSheet === num && styles.dropdownOptionTextActive]}>
-											{num}
-										</Text>
-										{pagesPerSheet === num && <Feather name="check" size={18} color={colors.printRequest} />}
-									</TouchableOpacity>
-								))}
-							</View>
-						</TouchableOpacity>
-					</Modal>
-
-					{/* Number of Copies */}
-					<View style={styles.settingRow}>
-						<Text style={styles.settingLabel}>Number of Copies</Text>
-						<View style={styles.copiesContainer}>
-							<TouchableOpacity style={styles.copiesButton} onPress={() => handleCopiesChange(-1)}>
-								<Feather name="minus" size={20} color={colors.textPrimary} />
-							</TouchableOpacity>
-							<Text style={styles.copiesValue}>{numberOfCopies}</Text>
-							<TouchableOpacity style={styles.copiesButton} onPress={() => handleCopiesChange(1)}>
-								<Feather name="plus" size={20} color={colors.textPrimary} />
-							</TouchableOpacity>
-						</View>
-					</View>
 				</View>
 
 				{error && (
@@ -423,35 +418,36 @@ const styles = StyleSheet.create({
 		padding: 20,
 		paddingBottom: 140,
 	},
-	summaryCard: {
+	documentCard: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
 		backgroundColor: colors.background,
-		borderRadius: 12,
-		padding: 12,
+		borderRadius: 14,
 		borderWidth: 1,
 		borderColor: colors.borderLight,
+		padding: 14,
 		marginBottom: 28,
 	},
-	summaryItem: {
-		paddingVertical: 6,
-		display: "flex",
-		flexDirection: "row",
-		gap: 4,
-		textTransform: "uppercase",
-		letterSpacing: 0.5,
-		fontSize: 12,
+	documentIconContainer: {
+		width: 44,
+		height: 44,
+		borderRadius: 10,
+		backgroundColor: "rgba(0, 217, 163, 0.1)",
+		justifyContent: "center",
+		alignItems: "center",
 	},
-	summaryLabel: {
-		color: colors.textSecondary,
-		fontWeight: "600",
-	},
-	summaryValue: {
-		color: colors.textPrimary,
+	extensionBadge: {
+		fontSize: 8,
 		fontWeight: "800",
+		color: colors.primary,
+		marginTop: 2,
 	},
-	summaryDivider: {
-		height: 1,
-		backgroundColor: colors.borderLight,
-		marginVertical: 12,
+	documentName: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: colors.textPrimary,
+		flex: 1,
 	},
 	settingsSection: {
 		marginBottom: 28,
@@ -470,12 +466,12 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 		fontWeight: "600",
 		color: colors.textPrimary,
-		flex: 0.4,
+		flexShrink: 0,
 	},
 	buttonsContainer: {
 		flexDirection: "row",
 		gap: 12,
-		flex: 0.6,
+		flex: 0.5,
 		justifyContent: "flex-start",
 	},
 	optionButton: {
@@ -659,7 +655,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		flex: 0.6,
+		flex: 0.5,
 		justifyContent: "flex-end",
 	},
 	copiesButton: {

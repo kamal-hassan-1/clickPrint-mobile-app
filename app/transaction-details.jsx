@@ -115,7 +115,7 @@ const TransactionDetails = () => {
 						<Text style={styles.sectionTitle}>Files ({transaction.fileCount})</Text>
 					</View>
 					{transaction.files.map((file, index) => (
-						<View key={file.hash} style={[styles.fileCard, index < transaction.files.length - 1 && styles.fileCardSpacing]}>
+						<View key={file.hash ?? index} style={[styles.fileCard, index < transaction.files.length - 1 && styles.fileCardSpacing]}>
 							<View style={styles.fileCardHeader}>
 								<View style={styles.fileIcon}>
 									<Feather name="file" size={16} color={colors.printRequest} />

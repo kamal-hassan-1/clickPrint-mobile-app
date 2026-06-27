@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
 
@@ -17,6 +17,7 @@ const API_BASE_URL = config.apiBaseUrl;
 
 const NewPrint = () => {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const [shops, setShops] = useState([]);
 	const [selectedShop, setSelectedShop] = useState(null);
 	const [loading, setLoading] = useState(true);
@@ -137,7 +138,7 @@ const NewPrint = () => {
 						)}
 					</ScrollView>
 
-					<View style={styles.footer}>
+					<View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
 						<TouchableOpacity
 							style={[styles.continueButton, !selectedShop && styles.continueButtonDisabled]}
 							onPress={handleContinue}

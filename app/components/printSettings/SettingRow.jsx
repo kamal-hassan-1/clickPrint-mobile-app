@@ -33,12 +33,12 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 		fontWeight: "600",
 		color: colors.textPrimary,
-		flex: 0.4,
+		flexShrink: 0,
 	},
 	buttonsContainer: {
 		flexDirection: "row",
 		gap: 12,
-		flex: 0.6,
+		flex: 0.5,
 		justifyContent: "flex-start",
 	},
 	optionButton: {

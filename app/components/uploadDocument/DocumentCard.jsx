@@ -13,8 +13,8 @@ const DocumentCard = ({ doc, index, onRemove }) => {
 					<Text style={styles.extensionBadge}>{extension}</Text>
 				</View>
 				<View style={styles.documentInfo}>
-					<Text style={styles.documentOriginalName} numberOfLines={1}>
-						{doc.file.name.slice(0, 40)}
+					<Text style={styles.documentOriginalName}>
+						{doc.file.name}
 					</Text>
 					<Text style={styles.documentFileSize}>{(doc.file.size / 1024).toFixed(2)} KB</Text>
 				</View>

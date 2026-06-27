@@ -38,14 +38,28 @@ const VerifyCode = () => {
 	}, [timer]);
 
 	const handleCodeChange = (value, index) => {
-		if (value.length > 1) return;
+		if (value.length > 1) {
+			// Handle paste: distribute digits across fields starting at current index
+			const digits = value.replace(/\D/g, "").slice(0, 5 - index);
+			if (!digits) return;
+			const newCodes = [...codes];
+			digits.split("").forEach((digit, i) => {
+				newCodes[index + i] = digit;
+			});
+			setCodes(newCodes);
+			const lastFilled = Math.min(index + digits.length - 1, 4);
+			inputRefs.current[lastFilled]?.focus();
+			if (newCodes.every((code) => code !== "") && !verifying) {
+				handleVerify(newCodes.join(""));
+			}
+			return;
+		}
 		const newCodes = [...codes];
 		newCodes[index] = value;
 		setCodes(newCodes);
 		if (value && index < 4) {
 			inputRefs.current[index + 1]?.focus();
 		}
-		// auto verify when all 5 digits
 		if (newCodes.every((code) => code !== "") && index === 4 && !verifying) {
 			handleVerify(newCodes.join(""));
 		}
@@ -169,7 +183,6 @@ const VerifyCode = () => {
 						onChangeText={(value) => handleCodeChange(value, index)}
 						onKeyPress={(e) => handleKeyPress(e, index)}
 						keyboardType="number-pad"
-						maxLength={1}
 						selectTextOnFocus
 						autoFocus={index === 0}
 					/>

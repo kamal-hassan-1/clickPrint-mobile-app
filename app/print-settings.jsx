@@ -34,13 +34,13 @@ const PrintSettings = () => {
 	const [currentDocIndex, setCurrentDocIndex] = useState(0);
 	const [allSettings, setAllSettings] = useState(() =>
 		Array.from({ length: numberOfDocuments }, () => ({
-			color: null,
-			pageType: null,
-			orientation: null,
+			color: "bw",
+			pageType: "a4",
+			orientation: "portrait",
 			pagesPerSheet: 1,
 			numberOfCopies: "1",
 			pageSelection: "",
-			sidedness: null,
+			sidedness: "double",
 		})),
 	);
 
@@ -108,7 +108,7 @@ const PrintSettings = () => {
 
 		const filesArray = settingsArray.map((s, index) => [
 			{
-				hash: parsedDocuments[index].fileId,
+				fileId: parsedDocuments[index].fileId,
 				settings: {
 					color: s.color === "color",
 					pageType: s.pageType,
@@ -132,7 +132,7 @@ const PrintSettings = () => {
 				};
 				console.log("Submitting print job with the following data:", JSON.stringify(body, null, 2));
 
-				const response = await fetch(`${API_BASE_URL}/jobs`, {
+				const response = await fetch(`${API_BASE_URL}/drafts`, {
 					method: "POST",
 					headers: {
 						Authorization: `Bearer ${token}`,
@@ -176,7 +176,9 @@ const PrintSettings = () => {
 				<TouchableOpacity onPress={() => (currentDocIndex > 0 ? setCurrentDocIndex(currentDocIndex - 1) : router.back())} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
-				<Text style={styles.headerTitle}>Print Settings</Text>
+				<Text style={styles.headerTitle}>
+					{numberOfDocuments > 1 ? `Print Settings (${currentDocIndex + 1}/${numberOfDocuments})` : "Print Settings"}
+				</Text>
 				<View style={styles.placeholder} />
 			</View>
 

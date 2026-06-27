@@ -30,14 +30,19 @@ const Login = () => {
 			try {
 				const token = await SecureStore.getItemAsync("authToken");
 				if (token) {
-					console.log("Token found:", token);
-					await SplashScreen.hideAsync();
-					router.replace("(tabs)/home");
-				} else {
-					setReady(true);
+					const response = await fetch(`${API_BASE_URL}/profile`, {
+						headers: { Authorization: `Bearer ${token}` },
+					});
+					if (response.ok) {
+						await SplashScreen.hideAsync();
+						router.replace("(tabs)/home");
+						return;
+					}
+					await SecureStore.deleteItemAsync("authToken");
 				}
+				setReady(true);
 			} catch (error) {
-				console.log("Error fetching token:", error);
+				console.log("Error validating token:", error);
 				setReady(true);
 			}
 		})();
