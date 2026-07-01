@@ -4,8 +4,8 @@ import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
 
@@ -13,39 +13,85 @@ import { colors } from "../constants/colors";
 
 const API_BASE_URL = config.apiBaseUrl;
 
-const CAPABILITY_LABELS = {
-	bw: "Black & White Printing",
-	color: "Color Printing",
-	a4: "A4 Paper Size",
-	a3: "A3 Paper Size",
-	legal: "Legal Paper Size",
-	duplex: "Double-Sided Printing",
-	staple: "Stapling",
-	binding: "Binding",
+//----------------------------------- HELPERS -----------------------------------//
+
+/**
+ * Calculates a match score for a shop based on the user's print settings.
+ * Higher score = better match = higher priority in the list.
+ */
+const calculateShopScore = (shop, settingsArray) => {
+	if (!shop.capabilities || shop.capabilities.length === 0) return 0;
+
+	let score = 0;
+	const caps = shop.capabilities.map((c) => c.toLowerCase());
+
+	for (const settings of settingsArray) {
+		// Color mode match
+		if (settings.color === "color" && caps.includes("color")) score += 3;
+		if (settings.color === "bw" && caps.includes("bw")) score += 3;
+
+		// Page type match
+		if (settings.pageType === "A4" && caps.includes("a4")) score += 2;
+		if (settings.pageType === "A3" && caps.includes("a3")) score += 2;
+
+		// Duplex match
+		if (settings.sidedness !== "none" && caps.includes("duplex")) score += 2;
+	}
+
+	// Bonus for being online
+	if (shop.isOnline) score += 5;
+
+	return score;
 };
 
 //----------------------------------- COMPONENTS -----------------------------------//
 
 const ShopDetails = () => {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams();
-	const shopId = params.shopId;
-	const shopName = params.shopName;
 
-	const [shop, setShop] = useState(null);
+	const [shops, setShops] = useState([]);
+	const [selectedShop, setSelectedShop] = useState(null);
 	const [loading, setLoading] = useState(true);
+	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
+	const [searchQuery, setSearchQuery] = useState("");
+
+	// Parse params from print-settings
+	let parsedDocuments = [];
+	let parsedSettings = [];
+	try {
+		parsedDocuments = JSON.parse(params.documents || "[]");
+		parsedSettings = JSON.parse(params.allSettings || "[]");
+	} catch (e) {
+		console.error("Failed to parse params:", e);
+	}
+
+	// Sort shops by match score then filter by search
+	const sortedShops = [...shops].sort((a, b) => {
+		const scoreA = calculateShopScore(a, parsedSettings);
+		const scoreB = calculateShopScore(b, parsedSettings);
+		return scoreB - scoreA;
+	});
+
+	const filteredShops = sortedShops.filter((shop) => shop.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
 	useEffect(() => {
-		fetchShopDetails();
+		if (parsedDocuments.length === 0 || parsedSettings.length === 0) {
+			Alert.alert("Error", "Missing required information. Please go back.");
+			router.back();
+			return;
+		}
+		fetchShops();
 	}, []);
 
-	const fetchShopDetails = async () => {
+	const fetchShops = async () => {
 		try {
 			setLoading(true);
 			setError(null);
 			const token = await SecureStore.getItemAsync("authToken");
-			const response = await fetch(`${API_BASE_URL}/shops/${shopId}`, {
+			const response = await fetch(`${API_BASE_URL}/shops`, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 				},
@@ -56,17 +102,76 @@ const ShopDetails = () => {
 			}
 
 			const data = await response.json();
-			setShop(data.data);
+			setShops(data.data);
 		} catch (err) {
-			console.error("Error fetching shop details:", err);
-			setError(err.message || "Failed to load shop details. Please try again.");
+			console.error("Error fetching shops:", err);
+			setError(err.message || "Failed to load shops. Please try again.");
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const handleContinue = () => {
-		router.push({ pathname: "/upload-document", params: { shopId, shopName: shop?.name || shopName } });
+	const handleShopSelect = (shop) => {
+		setSelectedShop(shop._id);
+	};
+
+	const handleContinue = async () => {
+		if (!selectedShop) {
+			Alert.alert("No Shop Selected", "Please select a print shop to continue.");
+			return;
+		}
+
+		// Build draft payload
+		const files = parsedSettings.map((s, index) => ({
+			fileId: parsedDocuments[index].fileId,
+			settings: {
+				color: s.color === "color",
+				pageType: s.pageType,
+				orientation: s.orientation,
+				pagesPerSheet: s.pagesPerSheet,
+				pageSelection: s.pageSelection || "all",
+				sidedness: s.sidedness,
+				numberOfCopies: parseInt(s.numberOfCopies),
+			},
+		}));
+
+		try {
+			setSubmitting(true);
+			setError(null);
+			const token = await SecureStore.getItemAsync("authToken");
+
+			const body = {
+				forShop: selectedShop,
+				files: files,
+			};
+			console.log("Submitting draft with the following data:", JSON.stringify(body, null, 2));
+
+			const response = await fetch(`${API_BASE_URL}/drafts`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(body),
+			});
+			const data = await response.json();
+			if (response.status === 201) {
+				console.log("Draft created successfully:", data);
+				router.push({
+					pathname: "/draft-details",
+					params: { draft: JSON.stringify(data.data) },
+				});
+			} else {
+				console.log("Error creating draft:", data);
+				throw new Error(data.message);
+			}
+		} catch (err) {
+			console.error("Error submitting draft:", err);
+			setError(err.message);
+			Alert.alert("Error", "Failed to create draft. Please try again.");
+		} finally {
+			setSubmitting(false);
+		}
 	};
 
 	//----------------------------------- RENDER -----------------------------------//
@@ -78,104 +183,130 @@ const ShopDetails = () => {
 				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
-				<Text style={styles.headerTitle}>Shop Details</Text>
+				<Text style={styles.headerTitle}>Select Print Shop</Text>
 				<View style={styles.placeholder} />
+			</View>
+
+			<View style={styles.searchContainer}>
+				<Feather name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
+				<TextInput
+					style={styles.searchInput}
+					placeholder="Search shops..."
+					placeholderTextColor={colors.textSecondary}
+					value={searchQuery}
+					onChangeText={setSearchQuery}
+					returnKeyType="search"
+					clearButtonMode="while-editing"
+				/>
+			</View>
+
+			{/* Priority info banner */}
+			<View style={styles.priorityBanner}>
+				<Feather name="zap" size={16} color={colors.primary} />
+				<Text style={styles.priorityBannerText}>Shops are sorted by best match for your print settings</Text>
 			</View>
 
 			{loading ? (
 				<View style={styles.loadingContainer}>
 					<ActivityIndicator size="large" color={colors.primary} />
-					<Text style={styles.loadingText}>Loading shop details...</Text>
+					<Text style={styles.loadingText}>Loading shops...</Text>
 				</View>
-			) : error ? (
+			) : error && shops.length === 0 ? (
 				<View style={styles.errorContainer}>
-					<Feather name="alert-circle" size={48} color={colors.printRequest} />
+					<Feather name="alert-circle" size={48} color={colors.expense} />
 					<Text style={styles.errorText}>{error}</Text>
-					<TouchableOpacity style={styles.retryButton} onPress={fetchShopDetails}>
+					<TouchableOpacity style={styles.retryButton} onPress={fetchShops}>
 						<Text style={styles.retryButtonText}>Retry</Text>
+					</TouchableOpacity>
+				</View>
+			) : shops.length === 0 ? (
+				<View style={styles.emptyContainer}>
+					<Feather name="inbox" size={48} color={colors.textSecondary} />
+					<Text style={styles.emptyText}>No print shops available</Text>
+					<TouchableOpacity style={styles.retryButton} onPress={fetchShops}>
+						<Text style={styles.retryButtonText}>Refresh</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
 				<>
 					<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-						{/* Shop Header Card */}
-						<View style={styles.shopHeaderCard}>
-							<View style={styles.shopIconContainer}>
-								<Feather name="shopping-bag" size={32} color={colors.printRequest} />
+						{filteredShops.length === 0 ? (
+							<View style={styles.emptyContainer}>
+								<Feather name="search" size={48} color={colors.textSecondary} />
+								<Text style={styles.emptyText}>No shops match "{searchQuery}"</Text>
 							</View>
-							<Text style={styles.shopName}>{shop.name}</Text>
-							<View style={styles.onlineStatusBadge}>
-								<View style={[styles.statusDot, shop.isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
-								<Text style={[styles.statusText, shop.isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
-									{shop.isOnline ? "Online" : "Offline"}
-								</Text>
-							</View>
-						</View>
-
-						{/* Address Section */}
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Feather name="map-pin" size={18} color={colors.printRequest} />
-								<Text style={styles.sectionTitle}>Address</Text>
-							</View>
-							<View style={styles.card}>
-								<Text style={styles.addressText}>{shop.address}</Text>
-							</View>
-						</View>
-
-						{/* Capabilities Section */}
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Feather name="settings" size={18} color={colors.printRequest} />
-								<Text style={styles.sectionTitle}>Capabilities</Text>
-							</View>
-							<View style={styles.card}>
-								{shop.capabilities.length === 0 ? (
-									<Text style={styles.emptyText}>No capabilities listed</Text>
-								) : (
-									shop.capabilities.map((cap, index) => (
-										<View key={index} style={[styles.capabilityRow, index < shop.capabilities.length - 1 && styles.capabilityRowBorder]}>
-											<View style={styles.capabilityDot} />
-											<Text style={styles.capabilityText}>{CAPABILITY_LABELS[cap] || cap}</Text>
-										</View>
-									))
-								)}
-							</View>
-						</View>
-
-						{/* Pricing Section */}
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Feather name="tag" size={18} color={colors.printRequest} />
-								<Text style={styles.sectionTitle}>Pricing</Text>
-							</View>
-							{shop.prices.length === 0 ? (
-								<View style={styles.card}>
-									<Text style={styles.emptyText}>No pricing information available</Text>
-								</View>
-							) : (
-								shop.prices.map((price, index) => (
-									<View key={price._id} style={[styles.priceCard, index < shop.prices.length - 1 && styles.priceCardSpacing]}>
-										<Text style={styles.priceName}>{price.name}</Text>
-										<View style={styles.priceRow}>
-											<Text style={styles.priceLabel}>Rate</Text>
-											<Text style={styles.priceValue}>Rs. {price.rate}</Text>
-										</View>
-									</View>
-								))
-							)}
-						</View>
+						) : (
+							filteredShops.map((shop, index) => {
+								const score = calculateShopScore(shop, parsedSettings);
+								return (
+									<ShopCard
+										key={shop._id}
+										shop={shop}
+										isSelected={selectedShop && selectedShop === shop._id}
+										onSelect={() => handleShopSelect(shop)}
+										matchScore={score}
+										rank={index + 1}
+									/>
+								);
+							})
+						)}
 					</ScrollView>
 
-					<View style={styles.footer}>
-						<TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-							<Text style={styles.continueButtonText}>Continue</Text>
-							<Feather name="arrow-right" size={20} color={colors.cardBackground} />
+					<View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+						<TouchableOpacity
+							style={[styles.continueButton, (!selectedShop || submitting) && styles.continueButtonDisabled]}
+							onPress={handleContinue}
+							disabled={!selectedShop || submitting}
+						>
+							{submitting ? (
+								<ActivityIndicator color={colors.cardBackground} />
+							) : (
+								<>
+									<Text style={styles.continueButtonText}>Continue</Text>
+									<Feather name="arrow-right" size={20} color={colors.cardBackground} />
+								</>
+							)}
 						</TouchableOpacity>
 					</View>
 				</>
 			)}
 		</SafeAreaView>
+	);
+};
+
+const ShopCard = ({ shop, isSelected, onSelect, matchScore, rank }) => {
+	const isTopMatch = rank <= 3 && matchScore > 0;
+
+	return (
+		<TouchableOpacity style={[styles.shopCard, isSelected && styles.shopCardSelected]} onPress={onSelect} activeOpacity={0.7}>
+			<View style={[styles.shopIcon, isSelected && styles.shopIconSelected]}>
+				<Feather name="shopping-bag" size={24} color={isSelected ? colors.printRequest : colors.textSecondary} />
+			</View>
+
+			<View style={styles.shopInfo}>
+				<View style={styles.shopNameRow}>
+					<Text style={[styles.shopName, isSelected && styles.shopNameSelected]}>{shop.name}</Text>
+					{isTopMatch && (
+						<View style={styles.topMatchBadge}>
+							<Feather name="star" size={12} color={colors.primary} />
+							<Text style={styles.topMatchText}>Top Match</Text>
+						</View>
+					)}
+				</View>
+				<Text style={styles.shopAddress}>{shop.address}</Text>
+				<View style={styles.shopMeta}>
+					<View style={[styles.statusDot, shop.isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
+					<Text style={[styles.statusText, shop.isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
+						{shop.isOnline ? "Online" : "Offline"}
+					</Text>
+				</View>
+			</View>
+			{isSelected && (
+				<View style={styles.selectionIndicator}>
+					<Feather name="check-circle" size={24} color={colors.printRequest} />
+				</View>
+			)}
+		</TouchableOpacity>
 	);
 };
 
@@ -210,6 +341,45 @@ const styles = StyleSheet.create({
 	placeholder: {
 		width: 40,
 	},
+	searchContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: colors.cardBackground,
+		borderBottomWidth: 1,
+		borderBottomColor: colors.borderLight,
+		paddingHorizontal: 20,
+		paddingVertical: 10,
+	},
+	searchIcon: {
+		marginRight: 10,
+	},
+	searchInput: {
+		flex: 1,
+		fontSize: 15,
+		color: colors.textPrimary,
+		paddingVertical: 8,
+		paddingHorizontal: 12,
+		backgroundColor: colors.background,
+		borderRadius: 10,
+		borderWidth: 1,
+		borderColor: colors.borderLight,
+	},
+	priorityBanner: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingHorizontal: 20,
+		paddingVertical: 10,
+		backgroundColor: "rgba(0, 217, 163, 0.08)",
+		borderBottomWidth: 1,
+		borderBottomColor: colors.borderLight,
+	},
+	priorityBannerText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: colors.primary,
+		flex: 1,
+	},
 	loadingContainer: {
 		flex: 1,
 		justifyContent: "center",
@@ -227,20 +397,21 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		backgroundColor: colors.cardBackground,
 		padding: 20,
+		marginTop: 8,
 	},
 	errorText: {
 		marginTop: 16,
-		fontSize: 16,
+		fontSize: 18,
 		fontWeight: "600",
 		color: colors.textPrimary,
 		marginBottom: 20,
-		textAlign: "center",
 	},
 	retryButton: {
 		backgroundColor: colors.primary,
 		paddingHorizontal: 32,
 		paddingVertical: 12,
 		borderRadius: 12,
+		marginTop: 8,
 	},
 	retryButtonText: {
 		fontSize: 16,
@@ -249,18 +420,19 @@ const styles = StyleSheet.create({
 	},
 	scrollView: {
 		flex: 1,
+		backgroundColor: colors.cardBackground,
 	},
 	scrollContent: {
 		padding: 20,
 		paddingBottom: 120,
 	},
-	shopHeaderCard: {
+	shopCard: {
+		flexDirection: "row",
 		backgroundColor: colors.cardBackground,
-		borderRadius: 20,
-		padding: 24,
-		alignItems: "center",
-		marginBottom: 20,
-		borderWidth: 1,
+		borderRadius: 16,
+		padding: 16,
+		marginBottom: 16,
+		borderWidth: 2,
 		borderColor: colors.borderLight,
 		shadowColor: colors.shadowLight,
 		shadowOffset: { width: 0, height: 2 },
@@ -268,30 +440,65 @@ const styles = StyleSheet.create({
 		shadowRadius: 8,
 		elevation: 2,
 	},
-	shopIconContainer: {
-		width: 72,
-		height: 72,
-		borderRadius: 20,
-		backgroundColor: "#FFE8E5",
+	shopCardSelected: {
+		borderColor: colors.printRequest,
+		backgroundColor: colors.cardBackground,
+	},
+	shopIcon: {
+		width: 56,
+		height: 56,
+		borderRadius: 12,
+		backgroundColor: colors.background,
 		justifyContent: "center",
 		alignItems: "center",
-		marginBottom: 16,
+		marginRight: 16,
+	},
+	shopIconSelected: {
+		backgroundColor: "#FFE8E5",
+	},
+	shopInfo: {
+		flex: 1,
+	},
+	shopNameRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginBottom: 6,
+		flexWrap: "wrap",
 	},
 	shopName: {
-		fontSize: 22,
+		fontSize: 18,
 		fontWeight: "700",
 		color: colors.textPrimary,
-		marginBottom: 10,
-		textAlign: "center",
 	},
-	onlineStatusBadge: {
+	shopNameSelected: {
+		color: colors.printRequest,
+	},
+	topMatchBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+		paddingHorizontal: 8,
+		paddingVertical: 3,
+		borderRadius: 8,
+		backgroundColor: "rgba(0, 217, 163, 0.12)",
+	},
+	topMatchText: {
+		fontSize: 11,
+		fontWeight: "700",
+		color: colors.primary,
+	},
+	shopAddress: {
+		fontSize: 14,
+		fontWeight: "400",
+		color: colors.textSecondary,
+		marginBottom: 8,
+		lineHeight: 20,
+	},
+	shopMeta: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 6,
-		paddingHorizontal: 12,
-		paddingVertical: 5,
-		borderRadius: 20,
-		backgroundColor: colors.background,
 	},
 	statusDot: {
 		width: 8,
@@ -305,7 +512,7 @@ const styles = StyleSheet.create({
 		backgroundColor: colors.textSecondary,
 	},
 	statusText: {
-		fontSize: 13,
+		fontSize: 12,
 		fontWeight: "600",
 	},
 	statusTextOnline: {
@@ -314,99 +521,9 @@ const styles = StyleSheet.create({
 	statusTextOffline: {
 		color: colors.textSecondary,
 	},
-	section: {
-		marginBottom: 20,
-	},
-	sectionHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		marginBottom: 12,
-	},
-	sectionTitle: {
-		fontSize: 15,
-		fontWeight: "700",
-		color: colors.textPrimary,
-	},
-	card: {
-		backgroundColor: colors.cardBackground,
-		borderRadius: 16,
-		padding: 16,
-		borderWidth: 1,
-		borderColor: colors.borderLight,
-		shadowColor: colors.shadowLight,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 1,
-		shadowRadius: 8,
-		elevation: 2,
-	},
-	addressText: {
-		fontSize: 15,
-		color: colors.textPrimary,
-		lineHeight: 22,
-	},
-	emptyText: {
-		fontSize: 14,
-		color: colors.textSecondary,
-		textAlign: "center",
-		paddingVertical: 8,
-	},
-	capabilityRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 12,
-		paddingVertical: 10,
-	},
-	capabilityRowBorder: {
-		borderBottomWidth: 1,
-		borderBottomColor: colors.borderLight,
-	},
-	capabilityDot: {
-		width: 8,
-		height: 8,
-		borderRadius: 4,
-		backgroundColor: colors.printRequest,
-	},
-	capabilityText: {
-		fontSize: 14,
-		color: colors.textPrimary,
-		flex: 1,
-	},
-	priceCard: {
-		backgroundColor: colors.cardBackground,
-		borderRadius: 16,
-		padding: 16,
-		borderWidth: 1,
-		borderColor: colors.borderLight,
-		shadowColor: colors.shadowLight,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 1,
-		shadowRadius: 8,
-		elevation: 2,
-	},
-	priceCardSpacing: {
-		marginBottom: 12,
-	},
-	priceName: {
-		fontSize: 14,
-		fontWeight: "600",
-		color: colors.textPrimary,
-		marginBottom: 10,
-	},
-	priceRow: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	priceLabel: {
-		fontSize: 13,
-		color: colors.textSecondary,
-		fontWeight: "500",
-	},
-	priceValue: {
-		fontSize: 15,
-		fontWeight: "700",
-		color: colors.printRequest,
+	selectionIndicator: {
+		marginLeft: 8,
+		justifyContent: "center",
 	},
 	footer: {
 		position: "absolute",
@@ -433,10 +550,26 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		gap: 8,
 	},
+	continueButtonDisabled: {
+		backgroundColor: colors.borderLight,
+	},
 	continueButtonText: {
 		fontSize: 16,
 		fontWeight: "700",
 		color: colors.cardBackground,
+	},
+	emptyContainer: {
+		padding: 20,
+		display: "flex",
+		flexDirection: "column",
+		gap: 10,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	emptyText: {
+		fontSize: 16,
+		color: colors.textSecondary,
+		textAlign: "center",
 	},
 });
 

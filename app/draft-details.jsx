@@ -201,9 +201,7 @@ const DraftDetails = () => {
 								</View>
 								<View style={styles.fileCardHeaderText}>
 									<Text style={styles.fileLabel}>File {index + 1}</Text>
-									<Text style={styles.fileHash} numberOfLines={1}>
-										{file.fileId}
-									</Text>
+									
 								</View>
 							</View>
 

@@ -113,7 +113,7 @@ const HomePage = () => {
 							<TouchableOpacity
 								style={[styles.actionCard, styles.printRequestCard]}
 								onPress={() => {
-									router.push("/new-print");
+									router.push("/upload-document");
 								}}
 							>
 								<Text style={styles.actionCardText}>New Print</Text>

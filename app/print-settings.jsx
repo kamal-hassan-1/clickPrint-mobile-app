@@ -2,27 +2,21 @@
 
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import config from "../config/config";
 import { colors } from "../constants/colors";
 import DocumentSettingsForm from "./components/printSettings/DocumentSettingsForm";
 
 //----------------------------------- CONSTANTS -----------------------------------//
-
-const API_BASE_URL = config.apiBaseUrl;
 
 //----------------------------------- COMPONENTS -----------------------------------//
 
 const PrintSettings = () => {
 	const router = useRouter();
 	const params = useLocalSearchParams();
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState(null);
 
-	const { shopId, documents } = params;
+	const { documents } = params;
 	let parsedDocuments = [];
 	try {
 		parsedDocuments = JSON.parse(documents || "[]");
@@ -45,11 +39,11 @@ const PrintSettings = () => {
 	);
 
 	useEffect(() => {
-		if (!shopId || parsedDocuments.length === 0) {
+		if (parsedDocuments.length === 0) {
 			Alert.alert("Error", "Missing required document information.");
 			router.back();
 		}
-	}, [router, shopId, parsedDocuments.length]);
+	}, [router, parsedDocuments.length]);
 
 	const handleSettingsChange = (field, value) => {
 		setAllSettings((prev) => {
@@ -69,18 +63,16 @@ const PrintSettings = () => {
 		const firstSettings = allSettings[0];
 		const uniformSettings = Array.from({ length: numberOfDocuments }, () => ({ ...firstSettings }));
 		setAllSettings(uniformSettings);
-		createPrintJob(uniformSettings);
+		navigateToShopDetails(uniformSettings);
 	};
 
 	const handleCreateJob = () => {
-		createPrintJob(allSettings);
+		navigateToShopDetails(allSettings);
 	};
 
-	//--------------------------------------- PRINT JOB CREATION --------------------------------------//
+	//--------------------------------------- NAVIGATE TO SHOP DETAILS --------------------------------------//
 
-	const createPrintJob = async (settingsArray) => {
-		const token = await SecureStore.getItemAsync("authToken");
-
+	const navigateToShopDetails = (settingsArray) => {
 		for (let i = 0; i < settingsArray.length; i++) {
 			const s = settingsArray[i];
 			if (!s.color || !s.pageType || !s.orientation || !s.sidedness || !s.numberOfCopies) {
@@ -94,54 +86,13 @@ const PrintSettings = () => {
 			}
 		}
 
-		const files = settingsArray.map((s, index) => ({
-			fileId: parsedDocuments[index].fileId,
-			settings: {
-				color: s.color === "color",
-				pageType: s.pageType,
-				orientation: s.orientation,
-				pagesPerSheet: s.pagesPerSheet,
-				pageSelection: s.pageSelection || "all",
-				sidedness: s.sidedness,
-				numberOfCopies: parseInt(s.numberOfCopies),
+		router.push({
+			pathname: "/shop-details",
+			params: {
+				documents: JSON.stringify(parsedDocuments),
+				allSettings: JSON.stringify(settingsArray),
 			},
-		}));
-
-		try {
-			setLoading(true);
-			setError(null);
-			const body = {
-				forShop: shopId,
-				files: files,
-			};
-			console.log("Submitting draft with the following data:", JSON.stringify(body, null, 2));
-
-			const response = await fetch(`${API_BASE_URL}/drafts`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(body),
-			});
-			const data = await response.json();
-			if (response.status === 201) {
-				console.log("Draft created successfully:", data);
-				router.push({
-					pathname: "/draft-details",
-					params: { draft: JSON.stringify(data.data) },
-				});
-			} else {
-				console.log("Error creating draft:", data);
-				throw new Error(data.message);
-			}
-		} catch (err) {
-			console.error("Error submitting print settings:", err);
-			setError(err.message);
-			Alert.alert("Error", "Failed to create draft. Please try again.");
-		} finally {
-			setLoading(false);
-		}
+		});
 	};
 
 	//----------------------------------- RENDER -----------------------------------//
@@ -171,8 +122,8 @@ const PrintSettings = () => {
 				onSubmitAll={handleSubmitAll}
 				onMoveNext={handleMoveNext}
 				onCreateJob={handleCreateJob}
-				loading={loading}
-				error={error}
+				loading={false}
+				error={null}
 			/>
 		</SafeAreaView>
 	);

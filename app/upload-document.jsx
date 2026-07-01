@@ -4,8 +4,8 @@ import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
@@ -25,15 +25,7 @@ const UploadDocument = () => {
 	const [picking, setPicking] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState(null);
-	const shopId = params.shopId;
-	const shopName = params.shopName;
 
-	useEffect(() => {
-		if (!shopId || !shopName) {
-			Alert.alert("Error", "Shop information not found. Please go back and select a shop.");
-			router.back();
-		}
-	}, [router, shopId, shopName]);
 
 	const handleDocumentPick = async () => {
 		try {
@@ -99,7 +91,7 @@ const UploadDocument = () => {
 			}
 			if (failedDocs.length === 0) {
 				setDocuments([]);
-				router.push({ pathname: "/print-settings", params: { shopId, documents: JSON.stringify(documentArray) } });
+				router.push({ pathname: "/print-settings", params: { documents: JSON.stringify(documentArray) } });
 			} else {
 				setError(`${failedDocs.length} document(s) failed to upload: ${failedDocs.join(", ")}. Please try again.`);
 			}
