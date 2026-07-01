@@ -145,8 +145,7 @@ const DraftDetails = () => {
 						<Text style={styles.sectionTitle}>Draft Info</Text>
 					</View>
 					<View style={styles.card}>
-						<InfoRow label="Draft ID" value={draft._id} mono />
-						<InfoRow label="Shop" value={draft.forShop} mono />
+						<InfoRow label="Shop" value={draft.forShop?.name} mono />
 						<InfoRow label="Total Files" value={`${files.length} file${files.length !== 1 ? "s" : ""}`} />
 					</View>
 				</View>

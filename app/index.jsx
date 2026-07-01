@@ -25,6 +25,7 @@ const Login = () => {
 	useEffect(() => {
 
 		(async () => {
+			SplashScreen.preventAutoHideAsync();
 			try {
 				const token = await SecureStore.getItemAsync("authToken");
 				if (token) {
