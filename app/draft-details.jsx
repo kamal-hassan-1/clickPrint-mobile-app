@@ -99,7 +99,7 @@ const DraftDetails = () => {
 				Alert.alert("Success", "Your print job has been submitted!", [
 					{
 						text: "OK",
-						onPress: () => router.replace("/"),
+						onPress: () => router.replace("(tabs)/home"),
 					},
 				]);
 			} else {

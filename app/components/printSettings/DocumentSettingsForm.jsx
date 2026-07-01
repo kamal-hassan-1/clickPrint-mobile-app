@@ -1,12 +1,12 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
-import { useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useState, useRef } from "react";
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { colors } from "../../../constants/colors";
 import SettingRow from "./SettingRow";
 
-//----------------------------------- CONSTANTS -----------------------------------//
+
 
 const PAGE_RANGE_REGEX = /^(\d+(-\d+)?)(,\s*\d+(-\d+)?)*$/;
 
@@ -43,6 +43,10 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 	const [showPagesPerSheetDropdown, setShowPagesPerSheetDropdown] = useState(false);
 	const [showSidednessDropdown, setShowSidednessDropdown] = useState(false);
 
+	const scrollViewRef = useRef(null);
+	const startPageInputRef = useRef(null);
+	const advancedRangeInputRef = useRef(null);
+
 	const colorMode = settings.color;
 	const orientation = settings.orientation;
 	const sidedness = settings.sidedness;
@@ -57,7 +61,10 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 	const handlePageRangeChange = (value) => {
 		setPageRange(value);
 		if (value === "custom") {
-			Alert.alert("Dear User, Ensure Valid Range", "Otherwise the printer would proceed with printing the entire document.");
+			// Auto-focus the page range input after the custom UI renders
+			setTimeout(() => {
+				focusInput(advancedMode ? advancedRangeInputRef : startPageInputRef);
+			}, 300);
 			return;
 		}
 		setStartPage("");
@@ -68,6 +75,7 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 		onSettingsChange("pageSelection", "");
 	};
 
+
 	const handleAdvancedRangeChange = (value) => {
 		setAdvancedRange(value);
 		const valid = isValidAdvancedRange(value);
@@ -77,8 +85,25 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 		}
 	};
 
+
+	const focusInput = (ref) => {
+		setTimeout(() => {
+			if (ref.current) {
+				ref.current.focus();
+			}
+		}, 150);
+	};
+
+	const handleInputFocus = () => {
+		// KeyboardAvoidingView handles pushing content above keyboard
+	};
+
 	const toggleAdvancedMode = () => {
-		setAdvancedMode((prev) => !prev);
+		setAdvancedMode((prev) => {
+			const next = !prev;
+			focusInput(next ? advancedRangeInputRef : startPageInputRef);
+			return next;
+		});
 		setAdvancedRange("");
 		setIsAdvancedRangeValid(false);
 		setStartPage("");
@@ -139,10 +164,10 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 	return (
 		<KeyboardAvoidingView
 			style={styles.keyboardAvoidingView}
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
-			keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+			behavior="padding"
+			keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 80}
 		>
-			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+			<ScrollView ref={scrollViewRef} style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 				{/* Document Card */}
 				<View style={styles.documentCard}>
 					<View style={styles.documentIconContainer}>
@@ -265,23 +290,15 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 					/>
 
 					{/* Page Range */}
-					<View style={styles.settingRow}>
-						<Text style={styles.settingLabel}>Page Range</Text>
-						<View style={styles.buttonsContainer}>
-							<TouchableOpacity
-								style={[styles.optionButton, pageRange === "custom" && styles.optionButtonActive]}
-								onPress={() => handlePageRangeChange("custom")}
-							>
-								<Text style={[styles.optionButtonText, pageRange === "custom" && styles.optionButtonTextActive]}>Custom</Text>
-							</TouchableOpacity>
-							<TouchableOpacity
-								style={[styles.optionButton, pageRange === "all" && styles.optionButtonActive]}
-								onPress={() => handlePageRangeChange("all")}
-							>
-								<Text style={[styles.optionButtonText, pageRange === "all" && styles.optionButtonTextActive]}>All</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
+					<SettingRow
+						label="Page Range"
+						options={[
+							{ label: "Custom", value: "custom" },
+							{ label: "All", value: "all" },
+						]}
+						selectedValue={pageRange}
+						onSelect={handlePageRangeChange}
+					/>
 
 					{/* Adv Range Toggle*/}
 					{pageRange === "custom" && (
@@ -306,6 +323,7 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 								<View>
 									<Text style={styles.pageInputLabel}>Page Range</Text>
 									<TextInput
+										ref={advancedRangeInputRef}
 										style={[
 											styles.advancedRangeInput,
 											advancedRange.length > 0 &&
@@ -317,6 +335,7 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 										placeholderTextColor={colors.textSecondary}
 										value={advancedRange}
 										onChangeText={handleAdvancedRangeChange}
+										onFocus={(e) => handleInputFocus(e, advancedRangeInputRef)}
 										autoCapitalize="none"
 										returnKeyType="done"
 									/>
@@ -330,12 +349,14 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 									<View style={styles.pageInputGroup}>
 										<Text style={styles.pageInputLabel}>Start Page *</Text>
 										<TextInput
+											ref={startPageInputRef}
 											style={styles.pageInput}
 											keyboardType="number-pad"
 											placeholder="1"
 											placeholderTextColor={colors.textSecondary}
 											value={startPage}
 											onChangeText={handleStartPageChange}
+											onFocus={(e) => handleInputFocus(e, startPageInputRef)}
 											maxLength={4}
 											returnKeyType="next"
 										/>
@@ -344,7 +365,7 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 									<Text style={styles.pageRangeSeparator}>to</Text>
 
 									<View style={styles.pageInputGroup}>
-										<Text style={styles.pageInputLabel}>End Page (optional)</Text>
+										<Text style={styles.pageInputLabel}>End Page </Text>
 										<TextInput
 											style={styles.pageInput}
 											keyboardType="number-pad"
@@ -498,33 +519,69 @@ const styles = StyleSheet.create({
 		color: colors.textPrimary,
 		flexShrink: 0,
 	},
-	buttonsContainer: {
+	dropdownButton: {
 		flexDirection: "row",
-		gap: 12,
-		flex: 0.5,
-		justifyContent: "flex-start",
-	},
-	optionButton: {
+		alignItems: "center",
+		justifyContent: "space-between",
 		paddingVertical: 10,
 		paddingHorizontal: 16,
 		borderRadius: 8,
 		borderWidth: 1.5,
-		borderColor: colors.navInactive,
-		backgroundColor: colors.cardBackground,
-		flex: 1,
+		borderColor: colors.borderLight,
+		backgroundColor: colors.background,
+		minWidth: 100,
+		gap: 8,
 	},
-	optionButtonActive: {
-		backgroundColor: colors.printRequest,
-		borderColor: colors.printRequest,
-	},
-	optionButtonText: {
-		fontSize: 13,
+	dropdownButtonText: {
+		fontSize: 15,
 		fontWeight: "600",
-		color: colors.navInactive,
-		textAlign: "center",
+		color: colors.textPrimary,
 	},
-	optionButtonTextActive: {
-		color: colors.cardBackground,
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	dropdownModal: {
+		backgroundColor: colors.cardBackground,
+		borderRadius: 16,
+		paddingVertical: 8,
+		width: "75%",
+		maxWidth: 300,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.15,
+		shadowRadius: 24,
+		elevation: 12,
+	},
+	dropdownModalTitle: {
+		fontSize: 16,
+		fontWeight: "700",
+		color: colors.textPrimary,
+		paddingHorizontal: 20,
+		paddingVertical: 14,
+		borderBottomWidth: 1,
+		borderBottomColor: colors.borderLight,
+	},
+	dropdownOption: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingVertical: 14,
+		paddingHorizontal: 20,
+	},
+	dropdownOptionActive: {
+		backgroundColor: "rgba(255, 139, 123, 0.08)",
+	},
+	dropdownOptionText: {
+		fontSize: 15,
+		fontWeight: "500",
+		color: colors.textPrimary,
+	},
+	dropdownOptionTextActive: {
+		fontWeight: "700",
+		color: colors.printRequest,
 	},
 	customRangeContainer: {
 		backgroundColor: colors.background,
@@ -617,76 +674,10 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		marginTop: 20,
 	},
-	dropdownButton: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		paddingVertical: 10,
-		paddingHorizontal: 16,
-		borderRadius: 8,
-		borderWidth: 1.5,
-		borderColor: colors.borderLight,
-		backgroundColor: colors.background,
-		minWidth: 100,
-		gap: 8,
-	},
-	dropdownButtonText: {
-		fontSize: 15,
-		fontWeight: "600",
-		color: colors.textPrimary,
-	},
-	modalOverlay: {
-		flex: 1,
-		backgroundColor: "rgba(0, 0, 0, 0.5)",
-		justifyContent: "center",
-		alignItems: "center",
-	},
-	dropdownModal: {
-		backgroundColor: colors.cardBackground,
-		borderRadius: 16,
-		paddingVertical: 8,
-		width: "75%",
-		maxWidth: 300,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 8 },
-		shadowOpacity: 0.15,
-		shadowRadius: 24,
-		elevation: 12,
-	},
-	dropdownModalTitle: {
-		fontSize: 16,
-		fontWeight: "700",
-		color: colors.textPrimary,
-		paddingHorizontal: 20,
-		paddingVertical: 14,
-		borderBottomWidth: 1,
-		borderBottomColor: colors.borderLight,
-	},
-	dropdownOption: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		paddingVertical: 14,
-		paddingHorizontal: 20,
-	},
-	dropdownOptionActive: {
-		backgroundColor: "rgba(255, 139, 123, 0.08)",
-	},
-	dropdownOptionText: {
-		fontSize: 15,
-		fontWeight: "500",
-		color: colors.textPrimary,
-	},
-	dropdownOptionTextActive: {
-		fontWeight: "700",
-		color: colors.printRequest,
-	},
 	copiesContainer: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 5,
-		flex: 0.5,
-		justifyContent: "flex-end",
+		gap: 10,
 	},
 	copiesButton: {
 		width: 40,

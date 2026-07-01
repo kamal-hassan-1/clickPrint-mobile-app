@@ -11,7 +11,12 @@ const SettingRow = ({ label, options, selectedValue, onSelect }) => (
 					style={[styles.optionButton, selectedValue === option.value && styles.optionButtonActive]}
 					onPress={() => onSelect(option.value)}
 				>
-					<Text style={[styles.optionButtonText, selectedValue === option.value && styles.optionButtonTextActive]}>{option.label}</Text>
+					<Text
+						style={[styles.optionButtonText, selectedValue === option.value && styles.optionButtonTextActive]}
+						numberOfLines={1}
+					>
+						{option.label}
+					</Text>
 				</TouchableOpacity>
 			))}
 		</View>
@@ -37,9 +42,7 @@ const styles = StyleSheet.create({
 	},
 	buttonsContainer: {
 		flexDirection: "row",
-		gap: 12,
-		flex: 0.5,
-		justifyContent: "flex-start",
+		gap: 10,
 	},
 	optionButton: {
 		paddingVertical: 10,
@@ -48,7 +51,9 @@ const styles = StyleSheet.create({
 		borderWidth: 1.5,
 		borderColor: colors.navInactive,
 		backgroundColor: colors.cardBackground,
-		flex: 1,
+		minWidth: 72,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 	optionButtonActive: {
 		backgroundColor: colors.printRequest,
