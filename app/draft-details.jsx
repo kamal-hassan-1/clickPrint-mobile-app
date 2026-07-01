@@ -3,7 +3,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import config from "../config/config";
@@ -80,6 +80,31 @@ const DraftDetails = () => {
 	const cost = draft.cost || {};
 	const files = draft.files || [];
 
+	const [shopName, setShopName] = useState(draft.forShop?.name || "");
+
+	useEffect(() => {
+		const fetchShopName = async () => {
+			const shopId = draft.forShop?._id || (typeof draft.forShop === "string" ? draft.forShop : null);
+			if (!draft.forShop?.name && shopId) {
+				try {
+					const token = await SecureStore.getItemAsync("authToken");
+					const response = await fetch(`${API_BASE_URL}/shops/${shopId}`, {
+						headers: { Authorization: `Bearer ${token}` },
+					});
+					if (response.ok) {
+						const data = await response.json();
+						if (data.success && data.data) {
+							setShopName(data.data.name);
+						}
+					}
+				} catch (error) {
+					console.error("Failed to fetch shop name:", error);
+				}
+			}
+		};
+		fetchShopName();
+	}, [draft]);
+
 	//----------------------------------- HANDLERS -----------------------------------//
 
 	const handleSubmitDraft = async () => {
@@ -145,7 +170,7 @@ const DraftDetails = () => {
 						<Text style={styles.sectionTitle}>Draft Info</Text>
 					</View>
 					<View style={styles.card}>
-						<InfoRow label="Shop" value={draft.forShop?.name} mono />
+						<InfoRow label="Shop" value={shopName || "Loading..."} mono />
 						<InfoRow label="Total Files" value={`${files.length} file${files.length !== 1 ? "s" : ""}`} />
 					</View>
 				</View>
