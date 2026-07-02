@@ -275,6 +275,7 @@ const ShopDetails = () => {
 };
 
 const ShopCard = ({ shop, isSelected, onSelect, matchScore, rank }) => {
+	const router = useRouter();
 	const isTopMatch = rank <= 3 && matchScore > 0;
 
 	return (
@@ -302,8 +303,17 @@ const ShopCard = ({ shop, isSelected, onSelect, matchScore, rank }) => {
 				</View>
 			</View>
 			{isSelected && (
-				<View style={styles.selectionIndicator}>
-					<Feather name="check-circle" size={24} color={colors.printRequest} />
+				<View style={styles.selectionActions}>
+					
+					<TouchableOpacity 
+						style={styles.detailsButton} 
+						onPress={(e) => {
+							e.stopPropagation();
+							router.push(`/shop/${shop._id}`);
+						}}
+					>
+						<Feather name="chevron-right" size={24} color={colors.textPrimary} />
+					</TouchableOpacity>
 				</View>
 			)}
 		</TouchableOpacity>
@@ -522,8 +532,22 @@ const styles = StyleSheet.create({
 		color: colors.textSecondary,
 	},
 	selectionIndicator: {
-		marginLeft: 8,
 		justifyContent: "center",
+	},
+	selectionActions: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginLeft: 8,
+	},
+	detailsButton: {
+		padding: 6,
+		marginLeft: 12,
+		backgroundColor: colors.background,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: colors.borderLight,
+		justifyContent: "center",
+		alignItems: "center",
 	},
 	footer: {
 		position: "absolute",

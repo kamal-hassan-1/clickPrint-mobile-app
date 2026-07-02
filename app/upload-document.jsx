@@ -144,7 +144,6 @@ const UploadDocument = () => {
 			</View>
 			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 				<View style={styles.section}>
-					<Text style={styles.sectionTitle}>Documents</Text>
 
 					{/* Empty state - upload area */}
 					{!hasDocuments && !picking && (
