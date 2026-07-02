@@ -20,7 +20,6 @@ const API_BASE_URL = config.apiBaseUrl;
 const UploadDocument = () => {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const params = useLocalSearchParams();
 	const [documents, setDocuments] = useState([]);
 	const [picking, setPicking] = useState(false);
 	const [uploading, setUploading] = useState(false);
@@ -52,6 +51,7 @@ const UploadDocument = () => {
 				const newDocs = result.assets.map((file) => ({
 					file,
 					name: file.name ? file.name.replace(/\.[^/.]+$/, "") || "Document" : "Document",
+					status: "idle",
 				}));
 				setDocuments((prev) => [...prev, ...newDocs]);
 				setError(null);
@@ -75,7 +75,13 @@ const UploadDocument = () => {
 		const documentArray = [];
 		const token = await SecureStore.getItemAsync("authToken");
 		try {
-			for (const doc of documents) {
+			const uploadPromises = documents.map(async (doc, index) => {
+				setDocuments((prev) => {
+					const newDocs = [...prev];
+					newDocs[index] = { ...newDocs[index], status: "uploading" };
+					return newDocs;
+				});
+
 				const formData = new FormData();
 				formData.append("file", {
 					uri: doc.file.uri,
@@ -83,13 +89,29 @@ const UploadDocument = () => {
 					type: doc.file.mimeType,
 				});
 				const fileId = await uploadDocument(formData, doc.file.name, token);
+				
 				if (fileId) {
 					documentArray.push({ fileId, name: doc.file.name });
+					setDocuments((prev) => {
+						const newDocs = [...prev];
+						newDocs[index] = { ...newDocs[index], status: "success" };
+						return newDocs;
+					});
 				} else {
 					failedDocs.push(doc.file.name);
+					setDocuments((prev) => {
+						const newDocs = [...prev];
+						newDocs[index] = { ...newDocs[index], status: "failed" };
+						return newDocs;
+					});
 				}
-			}
+			});
+
+			await Promise.all(uploadPromises);
+
 			if (failedDocs.length === 0) {
+				// Wait 500ms to show the checkmarks before navigating
+				await new Promise((resolve) => setTimeout(resolve, 500));
 				setDocuments([]);
 				router.push({ pathname: "/print-settings", params: { documents: JSON.stringify(documentArray) } });
 			} else {
@@ -145,6 +167,7 @@ const UploadDocument = () => {
 			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 				<View style={styles.section}>
 
+
 					{/* Empty state - upload area */}
 					{!hasDocuments && !picking && (
 						<TouchableOpacity style={styles.uploadArea} onPress={handleDocumentPick}>
@@ -195,7 +218,7 @@ const UploadDocument = () => {
 					disabled={!hasDocuments || !allNamesValid || uploading}
 				>
 					{uploading ? (
-						<ActivityIndicator color={colors.cardBackground} />
+						<ActivityIndicator color={colors.activityIndicator} />
 					) : (
 						<Text style={styles.continueButtonText}>Upload</Text>
 					)}
@@ -359,7 +382,7 @@ const styles = StyleSheet.create({
 	continueButtonText: {
 		fontSize: 16,
 		fontWeight: "700",
-		color: colors.cardBackground,
+		color: "#000000ff",
 	},
 });
 

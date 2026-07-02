@@ -56,6 +56,7 @@ const ShopDetails = () => {
 			}
 
 			const data = await response.json();
+			console.log("Shop details:", data);
 			setShop(data.data);
 		} catch (err) {
 			console.error("Error fetching shop details:", err);
@@ -65,9 +66,7 @@ const ShopDetails = () => {
 		}
 	};
 
-	const handleContinue = () => {
-		router.push({ pathname: "/upload-document", params: { shopId, shopName: shop?.name || shopName } });
-	};
+	
 
 	//----------------------------------- RENDER -----------------------------------//
 
@@ -166,13 +165,6 @@ const ShopDetails = () => {
 							)}
 						</View>
 					</ScrollView>
-
-					<View style={styles.footer}>
-						<TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-							<Text style={styles.continueButtonText}>Continue</Text>
-							<Feather name="arrow-right" size={20} color={colors.cardBackground} />
-						</TouchableOpacity>
-					</View>
 				</>
 			)}
 		</SafeAreaView>

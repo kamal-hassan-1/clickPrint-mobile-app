@@ -259,7 +259,7 @@ const ShopDetails = () => {
 							disabled={!selectedShop || submitting}
 						>
 							{submitting ? (
-								<ActivityIndicator color={colors.cardBackground} />
+								<ActivityIndicator color={colors.activityIndicator} />
 							) : (
 								<>
 									<Text style={styles.continueButtonText}>Continue</Text>

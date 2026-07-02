@@ -1,3 +1,5 @@
+import { ActivityIndicator } from "react-native";
+
 export const colors = {
 	primary: "#00D9A3",
 	primaryLight: "#1DE0AD",
@@ -6,6 +8,9 @@ export const colors = {
 	// Background Colors
 	background: "#F7F8FA", // Very light gray
 	cardBackground: "#FFFFFF",
+	cardButton : "#a68989ff",
+
+	activityIndicator: "#00D9A3",
 
 	// Text Colors
 	textPrimary: "#1A1F36",

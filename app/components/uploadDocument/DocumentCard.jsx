@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { colors } from "../../../constants/colors";
 
 const DocumentCard = ({ doc, index, onRemove }) => {
@@ -13,14 +13,28 @@ const DocumentCard = ({ doc, index, onRemove }) => {
 					<Text style={styles.extensionBadge}>{extension}</Text>
 				</View>
 				<View style={styles.documentInfo}>
-					<Text style={styles.documentOriginalName}>
+					<Text style={styles.documentOriginalName} numberOfLines={1}>
 						{doc.file.name}
 					</Text>
 					<Text style={styles.documentFileSize}>{(doc.file.size / 1024).toFixed(2)} KB</Text>
 				</View>
-				<TouchableOpacity style={styles.removeCardButton} onPress={() => onRemove(index)}>
-					<Feather name="x" size={18} color={colors.printRequest} />
-				</TouchableOpacity>
+				{doc.status === "uploading" ? (
+					<View style={styles.statusContainer}>
+						<ActivityIndicator size="small" color={colors.primary} />
+					</View>
+				) : doc.status === "success" ? (
+					<View style={styles.statusContainer}>
+						<Feather name="check-circle" size={20} color={colors.primary} />
+					</View>
+				) : doc.status === "failed" ? (
+					<View style={styles.statusContainer}>
+						<Text style={styles.failedText}>Failed</Text>
+					</View>
+				) : (
+					<TouchableOpacity style={styles.removeCardButton} onPress={() => onRemove(index)}>
+						<Feather name="x" size={18} color={colors.printRequest} />
+					</TouchableOpacity>
+				)}
 			</View>
 		</View>
 	);
@@ -79,5 +93,15 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(255, 139, 123, 0.1)",
 		justifyContent: "center",
 		alignItems: "center",
+	},
+	statusContainer: {
+		paddingHorizontal: 8,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	failedText: {
+		color: colors.printRequest,
+		fontSize: 12,
+		fontWeight: "700",
 	},
 });
