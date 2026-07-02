@@ -29,6 +29,9 @@ const ProfileSetup = () => {
 	const buttonScaleAnim = useRef(new Animated.Value(1)).current;
 	const checkmarkAnim = useRef(new Animated.Value(0)).current;
 
+
+	const trimedName = userName.trim();
+
 	useEffect(() => {
 		// Entrance animation
 		Animated.parallel([
@@ -53,14 +56,21 @@ const ProfileSetup = () => {
 	const handleSubmit = async () => {
 		const token = await SecureStore.getItemAsync("authToken");
 
-		if (!userName.trim()) {
-			setError("Please enter your name");
+		if (trimedName.length < 5 || trimedName.length > 20) {
+			setError("Name must be between 5 and 20 characters.");
 			return;
 		}
-		if (userName.trim().length < 2) {
-			setError("Name must be at least 2 characters");
+
+		if (!/^[A-Za-z\s]+$/.test(trimedName)) {
+			setError("Only letters and spaces are allowed.");
 			return;
 		}
+
+		if (/\s{2,}/.test(trimedName)) {
+			setError("Name cannot contain multiple consecutive spaces.");
+			return;
+		}
+
 		setError("");
 		setLoading(true);
 
@@ -85,23 +95,22 @@ const ProfileSetup = () => {
 					Authorization: `Bearer ${token}`,
 				},
 				body: JSON.stringify({
-					name: userName.trim(),
+					name: trimedName,
 				}),
 			});
+
 			const data = await response.json();
-			console.log(data);
+
 			if (response.ok) {
 				await SecureStore.setItemAsync("name", data.data.profile.name);
 				setSuccess(true);
 
-				// Success animation
 				Animated.timing(checkmarkAnim, {
 					toValue: 1,
 					duration: 600,
 					useNativeDriver: true,
 				}).start();
 
-				// Navigate after delay
 				setTimeout(() => {
 					router.replace("/(tabs)/home");
 				}, 1500);
@@ -179,7 +188,9 @@ const ProfileSetup = () => {
 										<Text style={styles.errorText}>{error}</Text>
 									</Animated.View>
 								) : (
-									<Text style={styles.helperText}>{userName.length}/50 characters</Text>
+									<Text style={styles.helperText}>
+										{trimedName.length}/20 characters (5-20 required)
+									</Text>
 								)}
 							</View>
 
@@ -190,9 +201,15 @@ const ProfileSetup = () => {
 								}}
 							>
 								<TouchableOpacity
-									style={[styles.submitButton, loading && styles.submitButtonLoading]}
+									style={[
+										styles.submitButton,
+										(loading ||
+											trimedName.length < 5 ||
+											trimedName.length > 20) &&
+										styles.submitButtonLoading,
+									]}
 									onPress={handleSubmit}
-									disabled={loading}
+									disabled={loading || trimedName.length < 5 || trimedName.length > 20}
 								>
 									{loading ? (
 										<View style={styles.loadingContainer}>
