@@ -1,14 +1,16 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Dimensions, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import config from "../../config/config";
 import { colors } from "../../constants/colors";
+import { useActiveJobs } from "../../hooks/useActiveJobs";
 import { useDrafts } from "../../hooks/useDrafts";
+import ActiveJobCard from "../components/ActiveJobCard";
 import DraftItem from "../components/DraftItem";
 
 //----------------------------------- CONSTANTS -----------------------------------//
@@ -21,11 +23,20 @@ const API_BASE_URL = config.apiBaseUrl;
 const HomePage = () => {
 	const router = useRouter();
 	const { drafts, loading, error, refresh, refreshing } = useDrafts();
+	const { activeJobs, loading: loadingJobs, refresh: refreshJobs } = useActiveJobs();
 	const [accountBalance, setAccountBalance] = useState(0);
 
 	useEffect(() => {
 		fetchBalance();
 	}, []);
+
+	useFocusEffect(
+		useCallback(() => {
+			refresh();
+			refreshJobs();
+			fetchBalance();
+		}, [refresh, refreshJobs])
+	);
 
 	useEffect(() => {
 		if (error && error.includes("401")) {
@@ -58,6 +69,7 @@ const HomePage = () => {
 
 	const refreshAll = () => {
 		refresh();
+		refreshJobs();
 		fetchBalance();
 	};
 
@@ -149,6 +161,25 @@ const HomePage = () => {
 						))
 					)}
 				</View>
+
+				{/* Active Jobs */}
+				{!loadingJobs && activeJobs.length > 0 && (
+					<View style={styles.activeJobsContainer}>
+						<View style={styles.activeJobsHeader}>
+							<Text style={styles.activeJobsTitle}>Active Jobs</Text>
+							<View style={styles.activeJobsBadge}>
+								<Text style={styles.activeJobsBadgeText}>{activeJobs.length}</Text>
+							</View>
+						</View>
+						{activeJobs.map((job) => (
+							<ActiveJobCard
+								key={job.id}
+								job={job}
+								onPress={() => router.push({ pathname: "/transaction-details", params: { transaction: JSON.stringify(job) } })}
+							/>
+						))}
+					</View>
+				)}
 			</ScrollView>
 		</SafeAreaView>
 	);
@@ -310,6 +341,35 @@ const styles = StyleSheet.create({
 	emptyText: {
 		fontSize: 14,
 		color: colors.textSecondary,
+	},
+	activeJobsContainer: {
+		paddingHorizontal: 20,
+		paddingTop: 8,
+		paddingBottom: 4,
+	},
+	activeJobsHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 12,
+		gap: 8,
+	},
+	activeJobsTitle: {
+		fontSize: 18,
+		fontWeight: "700",
+		color: colors.textPrimary,
+	},
+	activeJobsBadge: {
+		backgroundColor: colors.creditWallet,
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	activeJobsBadgeText: {
+		fontSize: 12,
+		fontWeight: "700",
+		color: colors.cardBackground,
 	},
 });
 export default HomePage;

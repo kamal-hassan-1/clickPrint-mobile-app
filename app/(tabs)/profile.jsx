@@ -8,6 +8,7 @@ import { Alert, Animated, ScrollView, StatusBar, StyleSheet, Text, TouchableOpac
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 
+
 // ----------------------------------- COMPONENTS -----------------------------------//
 
 const AnimatedMenuItem = ({ style, onPress, children }) => {
@@ -46,6 +47,8 @@ const Profile = () => {
 	useEffect(() => {
 		loadProfileData();
 	}, []);
+
+
 
 	// Reload details when screen comes back into focus
 	useEffect(() => {
