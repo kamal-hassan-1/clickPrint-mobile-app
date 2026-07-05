@@ -3,7 +3,7 @@ const transformTransaction = (t) => {
 	return {
 		id: t._id,
 		status: t.status,
-		shopId: t.forShop,
+		shopId: t.shop?._id || t.shop,
 		timestamp: t.createdAt,
 		date: date.toISOString().split("T")[0],
 		time: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),

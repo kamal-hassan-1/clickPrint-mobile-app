@@ -12,7 +12,7 @@ export const fetchJobs = async () => {
 	});
 	if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 	const data = await response.json();
-	return data.data;
+	return data.data?.jobs || [];
 };
 
 export default fetchJobs;

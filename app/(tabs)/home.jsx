@@ -73,6 +73,40 @@ const HomePage = () => {
 		fetchBalance();
 	};
 
+	const handleDraftPress = (draft) => {
+		const documents = draft.files.map(f => ({
+			fileId: f.file?._id || f.file,
+			name: f.file?.originalName || `File`
+		}));
+		
+		const hasMissingSettings = draft.files.some(f => !f.settings || Object.keys(f.settings).length === 0);
+		
+		if (hasMissingSettings) {
+			router.push({
+				pathname: "/print-settings",
+				params: {
+					draftId: draft._id,
+					documents: JSON.stringify(documents)
+				}
+			});
+		} else if (!draft.shop) {
+			const allSettings = draft.files.map(f => f.settings || {});
+			router.push({
+				pathname: "/shop-details",
+				params: {
+					draftId: draft._id,
+					documents: JSON.stringify(documents),
+					allSettings: JSON.stringify(allSettings)
+				}
+			});
+		} else {
+			router.push({
+				pathname: "/draft-details",
+				params: { draft: JSON.stringify(draft) }
+			});
+		}
+	};
+
 	if (error) {
 		return (
 			<View style={styles.centerContainer}>
@@ -83,6 +117,9 @@ const HomePage = () => {
 			</View>
 		);
 	}
+	const showDrafts = drafts.length > 0 || loading || (!loading && !loadingJobs && drafts.length === 0 && activeJobs.length === 0);
+	const showActiveJobs = activeJobs.length > 0 || loadingJobs;
+
 	return (
 		<SafeAreaView style={styles.container} edges={["top"]}>
 			<StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -137,49 +174,66 @@ const HomePage = () => {
 					</View>
 				</View>
 
-				{/* User Drafts */}
-
-				<View style={styles.transactionsContainer}>
-					<View style={styles.historyHeader}>
-						<Text style={styles.historyTitle}>My Drafts</Text>
-					</View>
-					{loading ? (
-						<View style={styles.loadingContainer}>
-							<ActivityIndicator size="large" color={colors.primary} />
-						</View>
-					) : drafts.length === 0 ? (
-						<View style={styles.emptyState}>
-							<Text style={styles.emptyText}>No drafts yet</Text>
-						</View>
-					) : (
-						drafts.map((draft) => (
-							<DraftItem
-								key={draft._id}
-								draft={draft}
-								onPress={() => router.push({ pathname: "/draft-details", params: { draft: JSON.stringify(draft) } })}
-							/>
-						))
-					)}
-				</View>
-
-				{/* Active Jobs */}
-				{!loadingJobs && activeJobs.length > 0 && (
-					<View style={styles.activeJobsContainer}>
-						<View style={styles.activeJobsHeader}>
-							<Text style={styles.activeJobsTitle}>Active Jobs</Text>
-							<View style={styles.activeJobsBadge}>
-								<Text style={styles.activeJobsBadgeText}>{activeJobs.length}</Text>
+				<View style={styles.listsWrapper}>
+					{/* User Drafts */}
+					{showDrafts && (
+						<View style={styles.listCard}>
+							<View style={styles.historyHeader}>
+								<Text style={styles.historyTitle}>My Drafts</Text>
+							</View>
+							<View style={styles.innerListContainer}>
+								{loading ? (
+									<View style={styles.loadingContainer}>
+										<ActivityIndicator size="large" color={colors.primary} />
+									</View>
+								) : drafts.length === 0 ? (
+									<View style={styles.emptyState}>
+										<Text style={styles.emptyText}>No drafts yet</Text>
+									</View>
+								) : (
+									drafts.map((draft) => (
+										<DraftItem
+											key={draft._id}
+											draft={draft}
+											onPress={() => handleDraftPress(draft)}
+										/>
+									))
+								)}
 							</View>
 						</View>
-						{activeJobs.map((job) => (
-							<ActiveJobCard
-								key={job.id}
-								job={job}
-								onPress={() => router.push({ pathname: "/transaction-details", params: { transaction: JSON.stringify(job) } })}
-							/>
-						))}
-					</View>
-				)}
+					)}
+
+					{/* Active Jobs */}
+					{showActiveJobs && (
+						<View style={styles.listCard}>
+							<View style={styles.activeJobsHeader}>
+								<Text style={styles.activeJobsTitle}>Active Jobs</Text>
+								<View style={styles.activeJobsBadge}>
+									<Text style={styles.activeJobsBadgeText}>{activeJobs.length}</Text>
+								</View>
+							</View>
+							<View style={styles.innerListContainer}>
+								{loadingJobs ? (
+									<View style={styles.loadingContainer}>
+										<ActivityIndicator size="large" color={colors.primary} />
+									</View>
+								) : activeJobs.length === 0 ? (
+									<View style={styles.emptyState}>
+										<Text style={styles.emptyText}>No active jobs</Text>
+									</View>
+								) : (
+									activeJobs.map((job) => (
+										<ActiveJobCard
+											key={job.id}
+											job={job}
+											onPress={() => router.push({ pathname: "/transaction-details", params: { transaction: JSON.stringify(job) } })}
+										/>
+									))
+								)}
+							</View>
+						</View>
+					)}
+				</View>
 			</ScrollView>
 		</SafeAreaView>
 	);
@@ -307,15 +361,25 @@ const styles = StyleSheet.create({
 		color: colors.cardBackground,
 		lineHeight: 22,
 	},
-	transactionsContainer: {
-		backgroundColor: colors.cardBackground,
-		borderTopLeftRadius: 24,
-		borderTopRightRadius: 24,
-		paddingHorizontal: 20,
-		paddingTop: 24,
-		paddingBottom: 20,
-		marginTop: 12,
+	listsWrapper: {
 		flex: 1,
+		paddingHorizontal: 20,
+		paddingBottom: 20,
+		gap: 16,
+	},
+	listCard: {
+		flex: 1,
+		backgroundColor: colors.cardBackground,
+		borderRadius: 24,
+		padding: 20,
+		shadowColor: colors.shadowMedium,
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.1,
+		shadowRadius: 12,
+		elevation: 4,
+	},
+	innerListContainer: {
+		gap: 12,
 	},
 	historyHeader: {
 		flexDirection: "row",
@@ -342,11 +406,7 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: colors.textSecondary,
 	},
-	activeJobsContainer: {
-		paddingHorizontal: 20,
-		paddingTop: 8,
-		paddingBottom: 4,
-	},
+
 	activeJobsHeader: {
 		flexDirection: "row",
 		alignItems: "center",

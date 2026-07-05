@@ -115,7 +115,7 @@ const TransactionDetails = () => {
 						<Text style={styles.sectionTitle}>Files ({transaction.fileCount})</Text>
 					</View>
 					{transaction.files.map((file, index) => (
-						<View key={file.hash ?? index} style={[styles.fileCard, index < transaction.files.length - 1 && styles.fileCardSpacing]}>
+						<View key={file.file?._id ?? index} style={[styles.fileCard, index < transaction.files.length - 1 && styles.fileCardSpacing]}>
 							<View style={styles.fileCardHeader}>
 								<View style={styles.fileIcon}>
 									<Feather name="file" size={16} color={colors.printRequest} />
@@ -152,7 +152,7 @@ const TransactionDetails = () => {
 								const entryConfig = STATUS_CONFIG[entry.status] || { label: entry.status, color: colors.textSecondary, bg: colors.background };
 								const isLast = index === transaction.statusHistory.length - 1;
 								return (
-									<View key={entry._id} style={styles.timelineItem}>
+									<View key={`${entry.status}-${index}`} style={styles.timelineItem}>
 										<View style={styles.timelineLeft}>
 											<View style={[styles.timelineDot, { backgroundColor: entryConfig.color }]} />
 											{!isLast && <View style={styles.timelineLine} />}

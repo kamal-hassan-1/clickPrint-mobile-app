@@ -26,18 +26,10 @@ const ActiveJobCard = ({ job, onPress }) => {
 
 				<View style={styles.jobInfo}>
 					<Text style={styles.jobTitle}>Print Job</Text>
-					<View style={styles.jobMeta}>
-						<Text style={styles.jobMetaText}>
-							{job.fileCount} file{job.fileCount !== 1 ? "s" : ""}
-						</Text>
-						<Text style={styles.jobMetaDot}> • </Text>
-						<Text style={styles.jobMetaText}>{job.time}</Text>
-					</View>
 				</View>
 			</View>
 
 			<View style={styles.cardRight}>
-				{job.cost > 0 && <Text style={styles.jobCost}>Rs. {job.cost}</Text>}
 				<View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
 					<View style={[styles.statusPulse, { backgroundColor: statusConfig.color }]} />
 					<Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
@@ -55,7 +47,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
-		borderWidth: 1,
+		borderBottomWidth: 1,
 		borderColor: colors.borderLight,
 		shadowColor: colors.shadowLight,
 		shadowOffset: { width: 0, height: 2 },

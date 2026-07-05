@@ -12,7 +12,7 @@ export const fetchDrafts = async () => {
 	});
 	if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 	const data = await response.json();
-	return Array.isArray(data.data) ? data.data : [];
+	return data.data?.drafts || [];
 };
 
 export default fetchDrafts;
