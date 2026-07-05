@@ -61,6 +61,7 @@ const ShopDetails = () => {
 	// Parse params from print-settings
 	let parsedDocuments = [];
 	let parsedSettings = [];
+	const draftId = params.draftId;
 	try {
 		parsedDocuments = JSON.parse(params.documents || "[]");
 		parsedSettings = JSON.parse(params.allSettings || "[]");
@@ -102,7 +103,7 @@ const ShopDetails = () => {
 			}
 
 			const data = await response.json();
-			setShops(data.data);
+			setShops(data.data?.shops || []);
 		} catch (err) {
 			console.error("Error fetching shops:", err);
 			setError(err.message || "Failed to load shops. Please try again.");
@@ -121,54 +122,49 @@ const ShopDetails = () => {
 			return;
 		}
 
-		// Build draft payload
-		const files = parsedSettings.map((s, index) => ({
-			fileId: parsedDocuments[index].fileId,
-			settings: {
-				color: s.color === "color",
-				pageType: s.pageType,
-				orientation: s.orientation,
-				pagesPerSheet: s.pagesPerSheet,
-				pageSelection: s.pageSelection || "all",
-				sidedness: s.sidedness,
-				numberOfCopies: parseInt(s.numberOfCopies),
-			},
-		}));
-
 		try {
 			setSubmitting(true);
 			setError(null);
 			const token = await SecureStore.getItemAsync("authToken");
 
-			const body = {
-				forShop: selectedShop,
-				files: files,
-			};
-			console.log("Submitting draft with the following data:", JSON.stringify(body, null, 2));
-
-			const response = await fetch(`${API_BASE_URL}/drafts`, {
-				method: "POST",
+			// Step 1: Update draft with selected shop
+			const updateResponse = await fetch(`${API_BASE_URL}/drafts/${draftId}`, {
+				method: "PATCH",
 				headers: {
 					Authorization: `Bearer ${token}`,
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(body),
+				body: JSON.stringify({ shop: selectedShop }),
 			});
-			const data = await response.json();
-			if (response.status === 201) {
-				console.log("Draft created successfully:", data);
-				router.push({
-					pathname: "/draft-details",
-					params: { draft: JSON.stringify(data.data) },
-				});
-			} else {
-				console.log("Error creating draft:", data);
-				throw new Error(data.message);
+			const updateData = await updateResponse.json();
+			if (!updateResponse.ok) {
+				throw new Error(updateData.message || "Failed to update shop.");
 			}
+			console.log("Draft updated with shop:", updateData);
+
+			// Step 2: Check draft to calculate cost
+			const checkResponse = await fetch(`${API_BASE_URL}/drafts/${draftId}/check`, {
+				method: "PATCH",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			});
+			const checkData = await checkResponse.json();
+			if (!checkResponse.ok) {
+				throw new Error(checkData.message || "Failed to calculate cost.");
+			}
+			console.log("Draft checked with cost:", checkData);
+
+			// Navigate to draft-details with the full checked draft
+			router.push({
+				pathname: "/draft-details",
+				params: { draft: JSON.stringify(checkData.data.draft) },
+			});
 		} catch (err) {
-			console.error("Error submitting draft:", err);
+			console.error("Error processing draft:", err);
 			setError(err.message);
-			Alert.alert("Error", "Failed to create draft. Please try again.");
+			Alert.alert("Error", err.message || "Failed to process draft. Please try again.");
 		} finally {
 			setSubmitting(false);
 		}

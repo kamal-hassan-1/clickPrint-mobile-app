@@ -80,12 +80,12 @@ const DraftDetails = () => {
 	const cost = draft.cost || {};
 	const files = draft.files || [];
 
-	const [shopName, setShopName] = useState(draft.forShop?.name || "");
+	const [shopName, setShopName] = useState(draft.shop?.name || "");
 
 	useEffect(() => {
 		const fetchShopName = async () => {
-			const shopId = draft.forShop?._id || (typeof draft.forShop === "string" ? draft.forShop : null);
-			if (!draft.forShop?.name && shopId) {
+			const shopId = draft.shop?._id || (typeof draft.shop === "string" ? draft.shop : null);
+			if (!draft.shop?.name && shopId) {
 				try {
 					const token = await SecureStore.getItemAsync("authToken");
 					const response = await fetch(`${API_BASE_URL}/shops/${shopId}`, {
@@ -218,21 +218,21 @@ const DraftDetails = () => {
 						<Feather name="file-text" size={18} color={colors.printRequest} />
 						<Text style={styles.sectionTitle}>Files ({files.length})</Text>
 					</View>
-					{files.map((file, index) => (
-						<View key={`${file.fileId}-${index}`} style={[styles.fileCard, index < files.length - 1 && styles.fileCardSpacing]}>
+					{files.map((fileEntry, index) => (
+						<View key={`${fileEntry.file?._id || fileEntry.file}-${index}`} style={[styles.fileCard, index < files.length - 1 && styles.fileCardSpacing]}>
 							<View style={styles.fileCardHeader}>
 								<View style={styles.fileIcon}>
 									<Feather name="file" size={16} color={colors.printRequest} />
 								</View>
 								<View style={styles.fileCardHeaderText}>
-									<Text style={styles.fileLabel}>File {index + 1}</Text>
+									<Text style={styles.fileLabel}>{fileEntry.file?.originalName || `File ${index + 1}`}</Text>
 									
 								</View>
 							</View>
 
 							<View style={styles.settingsDivider} />
 
-							{Object.entries(file.settings || {}).map(([key, value], i, arr) => (
+							{Object.entries(fileEntry.settings || {}).map(([key, value], i, arr) => (
 								<View key={key} style={[styles.settingRow, i < arr.length - 1 && styles.settingRowBorder]}>
 									<Text style={styles.settingLabel}>{SETTING_LABELS[key] || key}</Text>
 									<Text style={styles.settingValue}>{formatSettingValue(key, value)}</Text>

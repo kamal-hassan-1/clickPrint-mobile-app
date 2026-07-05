@@ -2,13 +2,17 @@
 
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import config from "../config/config";
 import { colors } from "../constants/colors";
 import DocumentSettingsForm from "./components/printSettings/DocumentSettingsForm";
 
 //----------------------------------- CONSTANTS -----------------------------------//
+
+const API_BASE_URL = config.apiBaseUrl;
 
 //----------------------------------- COMPONENTS -----------------------------------//
 
@@ -16,7 +20,7 @@ const PrintSettings = () => {
 	const router = useRouter();
 	const params = useLocalSearchParams();
 
-	const { documents } = params;
+	const { documents, draftId } = params;
 	let parsedDocuments = [];
 	try {
 		parsedDocuments = JSON.parse(documents || "[]");
@@ -34,7 +38,7 @@ const PrintSettings = () => {
 			pagesPerSheet: 1,
 			numberOfCopies: "1",
 			pageSelection: "",
-			sidedness: "double",
+			sidedness: "none",
 		})),
 	);
 
@@ -72,7 +76,7 @@ const PrintSettings = () => {
 
 	//--------------------------------------- NAVIGATE TO SHOP DETAILS --------------------------------------//
 
-	const navigateToShopDetails = (settingsArray) => {
+	const navigateToShopDetails = async (settingsArray) => {
 		for (let i = 0; i < settingsArray.length; i++) {
 			const s = settingsArray[i];
 			if (!s.color || !s.pageType || !s.orientation || !s.sidedness || !s.numberOfCopies) {
@@ -86,13 +90,50 @@ const PrintSettings = () => {
 			}
 		}
 
-		router.push({
-			pathname: "/shop-details",
-			params: {
-				documents: JSON.stringify(parsedDocuments),
-				allSettings: JSON.stringify(settingsArray),
-			},
-		});
+		// Update draft with file settings
+		try {
+			const token = await SecureStore.getItemAsync("authToken");
+			const files = settingsArray.map((s, index) => ({
+				file: parsedDocuments[index].fileId,
+				settings: {
+					color: s.color === "color",
+					pageType: s.pageType,
+					orientation: s.orientation,
+					pagesPerSheet: s.pagesPerSheet,
+					sidedness: s.sidedness,
+					numberOfCopies: parseInt(s.numberOfCopies),
+					pageSelection: s.pageSelection || "",
+				},
+			}));
+
+			const response = await fetch(`${API_BASE_URL}/drafts/${draftId}`, {
+				method: "PATCH",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ files }),
+			});
+
+			const data = await response.json();
+			if (!response.ok) {
+				throw new Error(data.message || "Failed to save settings.");
+			}
+
+			console.log("Draft updated with settings:", data);
+
+			router.push({
+				pathname: "/shop-details",
+				params: {
+					draftId,
+					documents: JSON.stringify(parsedDocuments),
+					allSettings: JSON.stringify(settingsArray),
+				},
+			});
+		} catch (err) {
+			console.error("Error updating draft with settings:", err);
+			Alert.alert("Error", err.message || "Failed to save settings. Please try again.");
+		}
 	};
 
 	//----------------------------------- RENDER -----------------------------------//

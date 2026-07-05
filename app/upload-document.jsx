@@ -91,7 +91,7 @@ const UploadDocument = () => {
 				const fileId = await uploadDocument(formData, doc.file.name, token);
 				
 				if (fileId) {
-					documentArray.push({ fileId, name: doc.file.name });
+					documentArray.push({ fileId, name: doc.name || doc.file.name });
 					setDocuments((prev) => {
 						const newDocs = [...prev];
 						newDocs[index] = { ...newDocs[index], status: "success" };
@@ -112,8 +112,34 @@ const UploadDocument = () => {
 			if (failedDocs.length === 0) {
 				// Wait 500ms to show the checkmarks before navigating
 				await new Promise((resolve) => setTimeout(resolve, 500));
+
+				// Create a draft with just the file IDs
+				const draftFiles = documentArray.map((doc) => ({ file: doc.fileId }));
+				const draftResponse = await fetch(`${API_BASE_URL}/drafts`, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ files: draftFiles }),
+				});
+				const draftData = await draftResponse.json();
+
+				if (draftResponse.status !== 201) {
+					throw new Error(draftData.message || "Failed to create draft.");
+				}
+
+				const draftId = draftData.data.draft._id;
+				console.log("Draft created with ID:", draftId);
+
 				setDocuments([]);
-				router.push({ pathname: "/print-settings", params: { documents: JSON.stringify(documentArray) } });
+				router.push({
+					pathname: "/print-settings",
+					params: {
+						draftId,
+						documents: JSON.stringify(documentArray),
+					},
+				});
 			} else {
 				setError(`${failedDocs.length} document(s) failed to upload: ${failedDocs.join(", ")}. Please try again.`);
 			}
@@ -137,8 +163,8 @@ const UploadDocument = () => {
 			const body = await response.json();
 			console.log(fileName, " : ", body);
 			if (response.status === 201) {
-				console.log("Document uploaded successfully named ", fileName, " with id ", body.data.fileId);
-				return body.data.fileId;
+				console.log("Document uploaded successfully named ", fileName, " with id ", body.data.file._id);
+				return body.data.file._id;
 			} else {
 				console.log("error in uploading document named ", fileName, ":", body.message);
 				return null;
