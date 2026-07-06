@@ -2,11 +2,11 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import * as Notifications from 'expo-notifications';
-import { createAndroidNotificationChannel } from "../../services/notifications";
+import { createAndroidNotificationChannel, registerForPushNotifications, sendPushTokenToBackend } from "../../services/notifications";
 
 //----------------------------------- FOREGROUND NOTIFICATION -----------------------------------//
 
@@ -21,11 +21,33 @@ Notifications.setNotificationHandler({
 
 export default function Layout() {
 	const insets = useSafeAreaInsets();
+	const notificationListener = useRef();
+	const responseListener = useRef();
 
 	useEffect(() => {
 		(async () => {
 			await createAndroidNotificationChannel();
+			const token = await registerForPushNotifications();
+			console.log(token ?? "Null token found!");
+
+			// Send the push token to the backend
+			if (token) {
+				await sendPushTokenToBackend(token);
+			}
 		})();
+
+		notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+			console.log("Notification received:", notification);
+		});
+
+		responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+			console.log("Notification response:", response);
+		});
+
+		return () => {
+			notificationListener.remove();
+			responseListener.remove();
+		};
 	}, []);
 
 	return (

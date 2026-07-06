@@ -30,14 +30,14 @@ const HomePage = () => {
 
 	useEffect(() => {
 		fetchBalance();
-	}, []);
+	}, [fetchBalance]);
 
 	useFocusEffect(
 		useCallback(() => {
 			reload();
 			reloadJobs();
 			fetchBalance();
-		}, [reload, reloadJobs])
+		}, [reload, reloadJobs, fetchBalance])
 	);
 
 	useEffect(() => {
@@ -46,7 +46,7 @@ const HomePage = () => {
 		}
 	}, [error, router, signOut]);
 
-	const fetchBalance = async () => {
+	const fetchBalance = useCallback(async () => {
 		try {
 			const token = await SecureStore.getItemAsync("authToken");
 			const response = await fetch(`${API_BASE_URL}/profile`, {
@@ -67,7 +67,7 @@ const HomePage = () => {
 		} catch (error) {
 			console.error("Error fetching account balance:", error);
 		}
-	};
+	}, [router]);
 
 	const refreshAll = () => {
 		refresh();

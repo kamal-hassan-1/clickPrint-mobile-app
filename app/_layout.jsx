@@ -23,7 +23,7 @@ function RootNavigation() {
       if (authState === "authed" && !inTabs) router.replace("/(tabs)/home");
     }
     SplashScreen.hideAsync();
-  }, [authState, segments]);
+  }, [authState, router, segments]);
 
   if (authState === "checking") return null;
   return <Slot />;
