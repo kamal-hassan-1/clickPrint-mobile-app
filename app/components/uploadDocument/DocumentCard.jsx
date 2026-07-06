@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { colors } from "../../../constants/colors";
+import { useState } from "react";
 
 const DocumentCard = ({ doc, index, onRemove }) => {
 	const extension = doc.file.name ? doc.file.name.split(".").pop().toUpperCase() : "FILE";
+	const [expanded, setExpanded] = useState(false);
 
 	return (
 		<View style={styles.documentCard}>
@@ -13,30 +15,32 @@ const DocumentCard = ({ doc, index, onRemove }) => {
 					<Text style={styles.extensionBadge}>{extension}</Text>
 				</View>
 				<View style={styles.documentInfo}>
-					<Text style={styles.documentOriginalName} numberOfLines={1}>
+					<TouchableOpacity onPress={() => setExpanded((prev) => !prev)} activeOpacity={0.7}>
+					<Text style={styles.documentOriginalName} numberOfLines={expanded ? undefined : 1}>
 						{doc.file.name}
 					</Text>
-					<Text style={styles.documentFileSize}>{(doc.file.size / 1024).toFixed(2)} KB</Text>
-				</View>
-				{doc.status === "uploading" ? (
-					<View style={styles.statusContainer}>
-						<ActivityIndicator size="small" color={colors.primary} />
-					</View>
-				) : doc.status === "success" ? (
-					<View style={styles.statusContainer}>
-						<Feather name="check-circle" size={20} color={colors.primary} />
-					</View>
-				) : doc.status === "failed" ? (
-					<View style={styles.statusContainer}>
-						<Text style={styles.failedText}>Failed</Text>
-					</View>
-				) : (
-					<TouchableOpacity style={styles.removeCardButton} onPress={() => onRemove(index)}>
-						<Feather name="x" size={18} color={colors.printRequest} />
-					</TouchableOpacity>
-				)}
+				</TouchableOpacity>
+				<Text style={styles.documentFileSize}>{(doc.file.size / 1024).toFixed(2)} KB</Text>
 			</View>
+			{doc.status === "uploading" ? (
+				<View style={styles.statusContainer}>
+					<ActivityIndicator size="small" color={colors.primary} />
+				</View>
+			) : doc.status === "success" ? (
+				<View style={styles.statusContainer}>
+					<Feather name="check-circle" size={20} color={colors.primary} />
+				</View>
+			) : doc.status === "failed" ? (
+				<View style={styles.statusContainer}>
+					<Text style={styles.failedText}>Failed</Text>
+				</View>
+			) : (
+				<TouchableOpacity style={styles.removeCardButton} onPress={() => onRemove(index)}>
+					<Feather name="x" size={18} color={colors.printRequest} />
+				</TouchableOpacity>
+			)}
 		</View>
+		</View >
 	);
 };
 

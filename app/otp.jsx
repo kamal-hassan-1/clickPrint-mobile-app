@@ -3,12 +3,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
 import { useAuth } from "../context/auth"
+import { BackHandler } from "react-native";
+import { useFocusEffect } from "expo-router";
 
 //----------------------------------- CONSTANTS -----------------------------------//
 
@@ -158,6 +160,18 @@ const VerifyCode = () => {
 		setCodes(["", "", "", "", ""]);
 		router.replace("/");
 	};
+
+	useFocusEffect(
+		useCallback(() => {
+			const onBackPress = () => {
+				handleBack();
+				return true; 
+			};
+
+			const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+			return () => subscription.remove();
+		}, [])
+	);
 
 	const formatTimer = (seconds) => {
 		const mins = Math.floor(seconds / 60);
