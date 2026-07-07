@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "166578570753",
+    "project_id": "clickprint-eeda6",
+    "storage_bucket": "clickprint-eeda6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:166578570753:android:707ded227c404e034a6200",
+        "android_client_info": {
+          "package_name": "com.kamalhassan.printmanagementsystemclientapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOuG4y3cFPzoV0f4udm54GRhUd0PYdsWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
