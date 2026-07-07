@@ -175,20 +175,27 @@ const HomePage = () => {
 
 				<View style={styles.listsWrapper}>
 					{/* User Drafts */}
-					{!loading && drafts.length > 0 && (
+					{!loading && (drafts.length > 0 || (!loadingJobs && activeJobs.length === 0)) && (
 						<View style={styles.listCard}>
 							<View style={styles.historyHeader}>
 								<Text style={styles.historyTitle}>My Drafts</Text>
 							</View>
-							<View style={styles.innerListContainer}>
-								{drafts.map((draft) => (
-									<DraftItem
-										key={draft._id}
-										draft={draft}
-										onPress={() => handleDraftPress(draft)}
-									/>
-								))}
-							</View>
+							{drafts.length > 0 ? (
+								<View style={styles.innerListContainer}>
+									{drafts.map((draft) => (
+										<DraftItem
+											key={draft._id}
+											draft={draft}
+											onPress={() => handleDraftPress(draft)}
+										/>
+									))}
+								</View>
+							) : (
+								<View style={styles.emptyState}>
+									<Feather name="inbox" size={48} color={colors.textSecondary} />
+									<Text style={styles.emptyText}>No drafts yet</Text>
+								</View>
+							)}
 						</View>
 					)}
 
@@ -377,6 +384,7 @@ const styles = StyleSheet.create({
 		paddingVertical: 40,
 		justifyContent: "center",
 		alignItems: "center",
+		gap: 12,
 	},
 	emptyText: {
 		fontSize: 14,

@@ -98,6 +98,14 @@ export default function Layout() {
 			/>
 
 			<Tabs.Screen
+				name="shops"
+				options={{
+					title: "Shops",
+					tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "location" : "location-outline"} size={20} color={color} />,
+				}}
+			/>
+
+			<Tabs.Screen
 				name="printHistory"
 				options={{
 					title: " History",

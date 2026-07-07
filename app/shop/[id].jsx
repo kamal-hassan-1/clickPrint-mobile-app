@@ -1,10 +1,11 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, BackHandler, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import config from "../../config/config";
 import { colors } from "../../constants/colors";
@@ -30,11 +31,32 @@ const ShopDetails = () => {
 	const router = useRouter();
 	const params = useLocalSearchParams();
 	const shopId = params.id || params.shopId;
-	const shopName = params.shopName;
 
 	const [shop, setShop] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	// Coming from the Shops tab pushes this screen onto the root stack; going
+	// "back" there can land the tabs navigator on its initial tab (Home)
+	// instead of restoring Shops. Route back explicitly instead of trusting
+	// router.back() when we know we arrived from that tab.
+	const goBack = useCallback(() => {
+		if (params.from === "shops") {
+			router.replace("/(tabs)/shops");
+		} else {
+			router.back();
+		}
+	}, [params.from, router]);
+
+	useFocusEffect(
+		useCallback(() => {
+			const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+				goBack();
+				return true;
+			});
+			return () => subscription.remove();
+		}, [goBack])
+	);
 
 	useEffect(() => {
 		fetchShopDetails();
@@ -74,7 +96,7 @@ const ShopDetails = () => {
 		<SafeAreaView style={styles.container} edges={["top"]}>
 			<StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 			<View style={styles.header}>
-				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+				<TouchableOpacity onPress={goBack} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
 				<Text style={styles.headerTitle}>Shop Details</Text>
@@ -99,9 +121,13 @@ const ShopDetails = () => {
 					<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 						{/* Shop Header Card */}
 						<View style={styles.shopHeaderCard}>
-							<View style={styles.shopIconContainer}>
-								<Feather name="shopping-bag" size={32} color={colors.printRequest} />
-							</View>
+							{shop.imageUrl ? (
+								<Image source={{ uri: shop.imageUrl }} style={styles.shopImage} contentFit="cover" transition={200} />
+							) : (
+								<View style={styles.shopIconContainer}>
+									<Feather name="shopping-bag" size={32} color={colors.printRequest} />
+								</View>
+							)}
 							<Text style={styles.shopName}>{shop.name}</Text>
 							<View style={styles.onlineStatusBadge}>
 								<View style={[styles.statusDot, shop.isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
@@ -121,6 +147,23 @@ const ShopDetails = () => {
 								<Text style={styles.addressText}>{shop.address}</Text>
 							</View>
 						</View>
+
+						{/* Timings Section */}
+						{shop.timings && shop.timings.length > 0 && (
+							<View style={styles.section}>
+								<View style={styles.sectionHeader}>
+									<Feather name="clock" size={18} color={colors.printRequest} />
+									<Text style={styles.sectionTitle}>Timings</Text>
+								</View>
+								<View style={styles.card}>
+									{shop.timings.map((timing, index) => (
+										<View key={index} style={[styles.capabilityRow, index < shop.timings.length - 1 && styles.capabilityRowBorder]}>
+											<Text style={styles.addressText}>{timing}</Text>
+										</View>
+									))}
+								</View>
+							</View>
+						)}
 
 						{/* Capabilities Section */}
 						<View style={styles.section}>
@@ -268,6 +311,13 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 		marginBottom: 16,
+	},
+	shopImage: {
+		width: 96,
+		height: 96,
+		borderRadius: 20,
+		marginBottom: 16,
+		backgroundColor: colors.background,
 	},
 	shopName: {
 		fontSize: 22,

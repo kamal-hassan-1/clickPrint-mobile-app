@@ -28,6 +28,11 @@ export default {
 			predictiveBackGestureEnabled: false,
 			googleServicesFile: "./google-services.json",
 			package: "com.kamalhassan.printmanagementsystemclientapp",
+			config: {
+				googleMaps: {
+					apiKey: process.env.GOOGLE_MAPS_API_KEY,
+				},
+			},
 		},
 		web: {
 			output: "static",
