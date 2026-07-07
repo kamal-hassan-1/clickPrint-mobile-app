@@ -2,7 +2,7 @@ import "dotenv/config";
 export default {
 	expo: {
 		name: "Click Print",
-		slug: "Click Print",
+		slug: "Click-print",
 		version: "1.0.0",
 		orientation: "portrait",
 		icon: "./assets/icon.png",
@@ -26,6 +26,7 @@ export default {
 			},
 			edgeToEdgeEnabled: true,
 			predictiveBackGestureEnabled: false,
+			googleServicesFile: "./google-services.json",
 			package: "com.kamalhassan.printmanagementsystemclientapp",
 		},
 		web: {
@@ -58,7 +59,7 @@ export default {
 		extra: {
 			router: {},
 			eas: {
-				projectId: "8f036921-80b8-45ba-9cfa-120c5411b3a6",
+				projectId: "dcfa1e7b-a3c9-4b15-91a9-5a7bba18f0d9"
 			},
 			apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "https://clickprintbackend.wckd.pk/api",
 		},
