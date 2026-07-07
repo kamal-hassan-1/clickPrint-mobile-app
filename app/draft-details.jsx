@@ -256,7 +256,7 @@ const DraftDetails = () => {
 						<ActivityIndicator size="small" color={colors.cardBackground} />
 					) : (
 						<>
-							<Text style={styles.submitButtonText}>Submit Draft</Text>
+							<Text style={styles.submitButtonText}>Submit Job</Text>
 							<Feather name="send" size={20} color={colors.cardBackground} />
 						</>
 					)}

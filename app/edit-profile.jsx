@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -23,6 +24,24 @@ const EditProfile = () => {
     const [name, setName] = useState("");
     const [originalName, setOriginalName] = useState("");
     const [saving, setSaving] = useState(false);
+
+    // This screen is pushed onto the root stack from the Profile tab; going
+    // "back" there can land the tabs navigator on its initial tab (Home)
+    // instead of restoring Profile. Route back explicitly instead of trusting
+    // router.back().
+    const goBack = useCallback(() => {
+        router.replace("/(tabs)/profile");
+    }, [router]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+                goBack();
+                return true;
+            });
+            return () => subscription.remove();
+        }, [goBack])
+    );
 
     useEffect(() => {
         const loadName = async () => {
@@ -121,7 +140,7 @@ const EditProfile = () => {
 
             <View style={styles.header}>
                 <TouchableOpacity
-                    onPress={() => router.back()}
+                    onPress={goBack}
                     style={styles.backButton}
                 >
                     <Feather

@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
+import { BackHandler, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import appLogo from "../assets/icon.png";
 import { colors } from "../constants/colors";
@@ -12,13 +13,31 @@ import { colors } from "../constants/colors";
 const AboutPage = () => {
 	const router = useRouter();
 
+	// This screen is pushed onto the root stack from the Profile tab; going
+	// "back" there can land the tabs navigator on its initial tab (Home)
+	// instead of restoring Profile. Route back explicitly instead of trusting
+	// router.back().
+	const goBack = useCallback(() => {
+		router.replace("/(tabs)/profile");
+	}, [router]);
+
+	useFocusEffect(
+		useCallback(() => {
+			const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+				goBack();
+				return true;
+			});
+			return () => subscription.remove();
+		}, [goBack])
+	);
+
 	return (
 		<SafeAreaView style={styles.container} edges={["top", "bottom"]}>
 			<StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
 			{/* Header */}
 			<View style={styles.header}>
-				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+				<TouchableOpacity onPress={goBack} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
 				<Text style={styles.headerTitle}>About</Text>
