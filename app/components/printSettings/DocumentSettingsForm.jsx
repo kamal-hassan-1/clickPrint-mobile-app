@@ -1,11 +1,13 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
-import { useState, useRef } from "react";
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
+import { useState, useRef, useEffect } from "react";
+import { ActivityIndicator, Dimensions, Keyboard, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { colors } from "../../../constants/colors";
 import SettingRow from "./SettingRow";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const KEYBOARD_EXTRA_OFFSET = 20;
 
 
 
@@ -43,11 +45,55 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 	const [isAdvancedRangeValid, setIsAdvancedRangeValid] = useState(false);
 	const [showPagesPerSheetDropdown, setShowPagesPerSheetDropdown] = useState(false);
 	const [showSidednessDropdown, setShowSidednessDropdown] = useState(false);
+	const [keyboardOffset, setKeyboardOffset] = useState(0);
 	const insets = useSafeAreaInsets();
 
 	const scrollViewRef = useRef(null);
 	const startPageInputRef = useRef(null);
 	const advancedRangeInputRef = useRef(null);
+	const endPageInputRef = useRef(null);
+	const activeInputRef = useRef(null);
+	const scrollOffsetRef = useRef(0);
+
+	const scrollInputIntoView = (ref, keyboardHeight) => {
+		if (!ref?.current || !scrollViewRef.current) return;
+		ref.current.measure((x, y, width, height, pageX, pageY) => {
+			const windowHeight = Dimensions.get("window").height;
+			const visibleBottom = windowHeight - keyboardHeight - 110;
+			const overflow = pageY + height - visibleBottom;
+			if (overflow > 0) {
+				scrollViewRef.current.scrollTo({ y: scrollOffsetRef.current + overflow, animated: true });
+			}
+		});
+	};
+
+	useEffect(() => {
+		const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+		const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+		const showSub = Keyboard.addListener(showEvent, (e) => {
+			setKeyboardOffset(e.endCoordinates.height + KEYBOARD_EXTRA_OFFSET);
+		});
+		const hideSub = Keyboard.addListener(hideEvent, () => {
+			setKeyboardOffset(0);
+		});
+
+		return () => {
+			showSub.remove();
+			hideSub.remove();
+		};
+	}, []);
+
+	// Wait a tick after the content grows extra bottom padding (below) before
+	// measuring/scrolling, otherwise the ScrollView clamps to its old (shorter) scroll range.
+	useEffect(() => {
+		if (keyboardOffset > 0 && activeInputRef.current) {
+			const id = setTimeout(() => {
+				scrollInputIntoView(activeInputRef.current, keyboardOffset);
+			}, 50);
+			return () => clearTimeout(id);
+		}
+	}, [keyboardOffset]);
 
 	const colorMode = settings.color;
 	const orientation = settings.orientation;
@@ -96,8 +142,11 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 		}, 150);
 	};
 
-	const handleInputFocus = () => {
-		// KeyboardAvoidingView handles pushing content above keyboard
+	const handleInputFocus = (event, ref) => {
+		activeInputRef.current = ref;
+		if (keyboardOffset > 0) {
+			scrollInputIntoView(ref, keyboardOffset);
+		}
 	};
 
 	const toggleAdvancedMode = () => {
@@ -164,12 +213,15 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 	//----------------------------------- RENDER -----------------------------------//
 
 	return (
-		<KeyboardAvoidingView
-			style={styles.keyboardAvoidingView}
-			behavior="padding"
-			keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 80}
-		>
-			<ScrollView ref={scrollViewRef} style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+		<View style={styles.container}>
+			<ScrollView
+				ref={scrollViewRef}
+				style={styles.scrollView}
+				contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 + keyboardOffset }]}
+				keyboardShouldPersistTaps="handled"
+				onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+				scrollEventThrottle={16}
+			>
 				{/* Document Card */}
 				<View style={styles.documentCard}>
 					<View style={styles.documentIconContainer}>
@@ -369,12 +421,14 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 									<View style={styles.pageInputGroup}>
 										<Text style={styles.pageInputLabel}>End Page </Text>
 										<TextInput
+											ref={endPageInputRef}
 											style={styles.pageInput}
 											keyboardType="number-pad"
 											placeholder="End"
 											placeholderTextColor={colors.textSecondary}
 											value={endPage}
 											onChangeText={handleEndPageChange}
+											onFocus={(e) => handleInputFocus(e, endPageInputRef)}
 											maxLength={4}
 											returnKeyType="done"
 										/>
@@ -394,7 +448,7 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 			</ScrollView>
 
 			{/* Footer Buttons */}
-			<View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+			<View style={[styles.footer, { paddingBottom: insets.bottom + 20, bottom: keyboardOffset }]}>
 				{/* First doc with multiple docs: "Submit All" + "Move on" */}
 				{!isSingleDoc && isFirstDoc && (
 					<>
@@ -453,14 +507,15 @@ const DocumentSettingsForm = ({ documentName, documentNumber, totalDocuments, se
 					</TouchableOpacity>
 				)}
 			</View>
-		</KeyboardAvoidingView>
+		</View>
 	);
 };
 
 //----------------------------------- STYLES -----------------------------------//
 
 const styles = StyleSheet.create({
-	keyboardAvoidingView: {
+	container: {
+		backgroundColor: colors.cardBackground,
 		flex: 1,
 	},
 	scrollView: {
@@ -718,7 +773,7 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		left: 0,
 		right: 0,
-		backgroundColor: colors.cardBackground,
+		backgroundColor: "red",
 		padding: 20,
 		paddingBottom: 28,
 		borderTopWidth: 1,
