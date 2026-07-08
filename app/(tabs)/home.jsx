@@ -210,7 +210,7 @@ const HomePage = () => {
 									<ActiveJobCard
 										key={job.id}
 										job={job}
-										onPress={() => router.push({ pathname: "/transaction-details", params: { transaction: JSON.stringify(job) } })}
+										onPress={() => router.push({ pathname: "/job-details", params: { transaction: JSON.stringify(job) } })}
 									/>
 								))}
 							</View>

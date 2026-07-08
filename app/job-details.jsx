@@ -1,6 +1,7 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -66,6 +67,7 @@ const TransactionDetails = () => {
 	};
 
 	const [shopName, setShopName] = useState("Print Job");
+	const [shopImageUrl, setShopImageUrl] = useState(null);
 
 	useEffect(() => {
 		const fetchShopName = async () => {
@@ -78,6 +80,9 @@ const TransactionDetails = () => {
 				const data = await res.json();
 				if (data.success && data.data?.shop?.name) {
 					setShopName(data.data.shop.name);
+				}
+				if (data.success && data.data?.shop?.imageUrl) {
+					setShopImageUrl(data.data.shop.imageUrl);
 				}
 			} catch (e) {
 				console.error("Error fetching shop name:", e);
@@ -124,12 +129,12 @@ const TransactionDetails = () => {
 				{PROGRESS_STEPS.map((step, index) => {
 					const isCompleted = index <= currentIndex;
 					return (
-						<View 
-							key={step} 
+						<View
+							key={step}
 							style={[
-								styles.progressSegment, 
+								styles.progressSegment,
 								{ backgroundColor: isCompleted ? activeColor : colors.borderLight }
-							]} 
+							]}
 						/>
 					);
 				})}
@@ -154,14 +159,18 @@ const TransactionDetails = () => {
 				{/* Summary Card */}
 				<View style={styles.summaryCard}>
 					<View style={styles.summaryIconContainer}>
-						<Feather name="printer" size={32} color={colors.printRequest} />
+						{shopImageUrl ? (
+							<Image source={{ uri: shopImageUrl }} style={styles.shopImage} contentFit="cover" transition={200} />
+						) : (
+							<Feather name="printer" size={32} color={colors.printRequest} />
+						)}
 					</View>
 					<Text style={styles.summaryTitle}>{shopName}</Text>
 					<View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
 						<Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
 					</View>
 					<Text style={styles.summaryDate}>{formatDateTime(transaction.timestamp)}</Text>
-					
+
 					{renderProgressBar(transaction.status)}
 				</View>
 
@@ -314,6 +323,11 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 		marginBottom: 16,
+		overflow: "hidden",
+	},
+	shopImage: {
+		width: "100%",
+		height: "100%",
 	},
 	summaryTitle: {
 		fontSize: 22,

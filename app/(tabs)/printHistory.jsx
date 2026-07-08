@@ -190,7 +190,7 @@ const PrintHistory = () => {
 					<TransactionList
 						transactions={filteredAndSortedTransactions}
 						onTransactionPress={(t) =>
-							router.push({ pathname: "/transaction-details", params: { transaction: JSON.stringify(t) } })
+							router.push({ pathname: "/job-details", params: { transaction: JSON.stringify(t) } })
 						}
 					/>
 				)}
