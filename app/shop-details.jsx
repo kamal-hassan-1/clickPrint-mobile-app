@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
@@ -57,6 +57,7 @@ const ShopDetails = () => {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [onlineOnly, setOnlineOnly] = useState(false);
 
 	// Parse params from print-settings
 	let parsedDocuments = [];
@@ -76,7 +77,9 @@ const ShopDetails = () => {
 		return scoreB - scoreA;
 	});
 
-	const filteredShops = sortedShops.filter((shop) => shop.name.toLowerCase().includes(searchQuery.toLowerCase()));
+	const filteredShops = sortedShops
+		.filter((shop) => shop.name.toLowerCase().includes(searchQuery.toLowerCase()))
+		.filter((shop) => !onlineOnly || shop.isOnline);
 
 	useEffect(() => {
 		if (parsedDocuments.length === 0 || parsedSettings.length === 0) {
@@ -184,7 +187,6 @@ const ShopDetails = () => {
 			</View>
 
 			<View style={styles.searchContainer}>
-				<Feather name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
 				<TextInput
 					style={styles.searchInput}
 					placeholder="Search shops..."
@@ -194,6 +196,15 @@ const ShopDetails = () => {
 					returnKeyType="search"
 					clearButtonMode="while-editing"
 				/>
+				<View style={styles.onlineToggle}>
+					<Text style={styles.onlineToggleLabel}>online shops</Text>
+					<Switch
+						value={onlineOnly}
+						onValueChange={setOnlineOnly}
+						trackColor={{ false: colors.borderLight, true: colors.primary }}
+						thumbColor={colors.cardBackground}
+					/>
+				</View>
 			</View>
 
 			{/* Priority info banner */}
@@ -228,23 +239,18 @@ const ShopDetails = () => {
 					<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 						{filteredShops.length === 0 ? (
 							<View style={styles.emptyContainer}>
-								<Feather name="search" size={48} color={colors.textSecondary} />
-								<Text style={styles.emptyText}>No shops match "{searchQuery}"</Text>
+								<Feather name={onlineOnly ? "wifi-off" : "search"} size={48} color={colors.textSecondary} />
+								<Text style={styles.emptyText}>{onlineOnly ? "No shops online" : `No shops match "${searchQuery}"`}</Text>
 							</View>
 						) : (
-							filteredShops.map((shop, index) => {
-								const score = calculateShopScore(shop, parsedSettings);
-								return (
-									<ShopCard
-										key={shop._id}
-										shop={shop}
-										isSelected={selectedShop && selectedShop === shop._id}
-										onSelect={() => handleShopSelect(shop)}
-										matchScore={score}
-										rank={index + 1}
-									/>
-								);
-							})
+							filteredShops.map((shop) => (
+								<ShopCard
+									key={shop._id}
+									shop={shop}
+									isSelected={selectedShop && selectedShop === shop._id}
+									onSelect={() => handleShopSelect(shop)}
+								/>
+							))
 						)}
 					</ScrollView>
 
@@ -270,25 +276,22 @@ const ShopDetails = () => {
 	);
 };
 
-const ShopCard = ({ shop, isSelected, onSelect, matchScore, rank }) => {
+const ShopCard = ({ shop, isSelected, onSelect }) => {
 	const router = useRouter();
-	const isTopMatch = rank <= 3 && matchScore > 0;
 
 	return (
 		<TouchableOpacity style={[styles.shopCard, isSelected && styles.shopCardSelected]} onPress={onSelect} activeOpacity={0.7}>
 			<View style={[styles.shopIcon, isSelected && styles.shopIconSelected]}>
-				<Feather name="shopping-bag" size={24} color={isSelected ? colors.printRequest : colors.textSecondary} />
+				{shop.imageUrl ? (
+					<Image source={{ uri: shop.imageUrl }} style={styles.shopImage} />
+				) : (
+					<Feather name="shopping-bag" size={24} color={isSelected ? colors.printRequest : colors.textSecondary} />
+				)}
 			</View>
 
 			<View style={styles.shopInfo}>
 				<View style={styles.shopNameRow}>
 					<Text style={[styles.shopName, isSelected && styles.shopNameSelected]}>{shop.name}</Text>
-					{isTopMatch && (
-						<View style={styles.topMatchBadge}>
-							<Feather name="star" size={12} color={colors.primary} />
-							<Text style={styles.topMatchText}>Top Match</Text>
-						</View>
-					)}
 				</View>
 				<Text style={styles.shopAddress}>{shop.address}</Text>
 				<View style={styles.shopMeta}>
@@ -350,21 +353,29 @@ const styles = StyleSheet.create({
 	searchContainer: {
 		flexDirection: "row",
 		alignItems: "center",
+		justifyContent: "space-between",
 		backgroundColor: colors.cardBackground,
 		borderBottomWidth: 1,
 		borderBottomColor: colors.borderLight,
 		paddingHorizontal: 20,
 		paddingVertical: 10,
 	},
-	searchIcon: {
-		marginRight: 10,
+	onlineToggle: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	onlineToggleLabel: {
+		fontSize: 13,
+		fontWeight: "600",
+		color: colors.textSecondary,
 	},
 	searchInput: {
-		flex: 1,
+		width: "50%",
 		fontSize: 15,
 		color: colors.textPrimary,
-		paddingVertical: 8,
-		paddingHorizontal: 12,
+		paddingVertical: 5,
+		paddingHorizontal: 10,
 		backgroundColor: colors.background,
 		borderRadius: 10,
 		borderWidth: 1,
@@ -458,9 +469,15 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 		marginRight: 16,
+		overflow: "hidden",
 	},
 	shopIconSelected: {
 		backgroundColor: "#FFE8E5",
+	},
+	shopImage: {
+		width: "100%",
+		height: "100%",
+		borderRadius: 12,
 	},
 	shopInfo: {
 		flex: 1,
@@ -479,20 +496,6 @@ const styles = StyleSheet.create({
 	},
 	shopNameSelected: {
 		color: colors.printRequest,
-	},
-	topMatchBadge: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 4,
-		paddingHorizontal: 8,
-		paddingVertical: 3,
-		borderRadius: 8,
-		backgroundColor: "rgba(0, 217, 163, 0.12)",
-	},
-	topMatchText: {
-		fontSize: 11,
-		fontWeight: "700",
-		color: colors.primary,
 	},
 	shopAddress: {
 		fontSize: 14,
