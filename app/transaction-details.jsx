@@ -22,7 +22,7 @@ const STATUS_CONFIG = {
 };
 
 const SIDEDNESS_LABELS = {
-	single: "Single Sided",
+	none: "Single Sided",
 	long: "Double Sided (Long Edge)",
 	short: "Double Sided (Short Edge)",
 };
@@ -35,6 +35,8 @@ const formatSettingValue = (key, value) => {
 			return SIDEDNESS_LABELS[value] || value;
 		case "orientation":
 			return value.charAt(0).toUpperCase() + value.slice(1);
+		case "pageSelection":
+			return value ? value : "All Pages";
 		default:
 			return String(value);
 	}
@@ -46,7 +48,7 @@ const SETTING_LABELS = {
 	orientation: "Orientation",
 	pagesPerSheet: "Pages Per Sheet",
 	numberOfCopies: "Copies",
-	pageSelection: "Page Selection",
+	pageSelection: "Page Range",
 	sidedness: "Sidedness",
 };
 
@@ -144,7 +146,7 @@ const TransactionDetails = () => {
 				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
-				<Text style={styles.headerTitle}>Transaction Details</Text>
+				<Text style={styles.headerTitle}>Job Details</Text>
 				<View style={styles.placeholder} />
 			</View>
 
@@ -186,13 +188,13 @@ const TransactionDetails = () => {
 								<View style={styles.fileIcon}>
 									<Feather name="file" size={16} color={colors.printRequest} />
 								</View>
-								<View style={styles.fileCardHeaderText}>
-									<Text style={styles.fileLabel}>File {index + 1}</Text>
-									<Text style={styles.fileHash} numberOfLines={1}>
-										{file.hash}
-									</Text>
-								</View>
+								<Text style={styles.fileLabel} numberOfLines={Infinity}>
+									{file.file?.originalName || `File ${index + 1}`}
+								</Text>
 							</View>
+							<Text style={styles.fileHash} numberOfLines={1}>
+								{file.hash}
+							</Text>
 
 							<View style={styles.settingsDivider} />
 
@@ -213,7 +215,7 @@ const TransactionDetails = () => {
 							<Feather name="clock" size={18} color={colors.printRequest} />
 							<Text style={styles.sectionTitle}>Status History</Text>
 						</View>
-						<View style={styles.card}>
+						<View style={[styles.card, styles.historyCard]}>
 							{transaction.statusHistory.map((entry, index) => {
 								const entryConfig = STATUS_CONFIG[entry.status] || { label: entry.status, color: colors.textSecondary, bg: colors.background };
 								const isLast = index === transaction.statusHistory.length - 1;
@@ -371,6 +373,9 @@ const styles = StyleSheet.create({
 		shadowRadius: 8,
 		elevation: 2,
 	},
+	historyCard: {
+		paddingVertical: 16,
+	},
 	infoRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
@@ -415,7 +420,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		marginBottom: 12,
+		marginBottom: 4,
 	},
 	fileIcon: {
 		width: 36,
@@ -425,19 +430,18 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 	},
-	fileCardHeaderText: {
-		flex: 1,
-	},
 	fileLabel: {
+		flex: 1,
 		fontSize: 14,
 		fontWeight: "700",
 		color: colors.textPrimary,
-		marginBottom: 2,
 	},
 	fileHash: {
 		fontSize: 11,
 		color: colors.textSecondary,
 		fontFamily: "monospace",
+		marginLeft: 48,
+		marginBottom: 8,
 	},
 	settingsDivider: {
 		height: 1,
