@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { showAlert } from "../../utils/alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ShopsMap from "../../components/ShopsMap";
@@ -18,6 +18,7 @@ const ShopsPage = () => {
 	const router = useRouter();
 	const { shops, loading, error, reload } = useShops();
 	const [selectedShopId, setSelectedShopId] = useState(null);
+	const [viewMode, setViewMode] = useState("map"); // "map" | "list"
 
 	// Only shops with usable coordinates can be placed on the map.
 	const locatedShops = useMemo(
@@ -69,33 +70,126 @@ const ShopsPage = () => {
 					</TouchableOpacity>
 				</View>
 			) : (
-				<View style={styles.mapContainer}>
-					<ShopsMap
-						shops={locatedShops}
-						selectedShopId={selectedShopId}
-						initialRegion={initialRegion}
-						onSelectShop={setSelectedShopId}
-						onDeselect={() => setSelectedShopId(null)}
-					/>
+				<View style={styles.contentContainer}>
+					{viewMode === "map" ? (
+						<View style={styles.mapContainer}>
+							<ShopsMap
+								shops={locatedShops}
+								selectedShopId={selectedShopId}
+								initialRegion={initialRegion}
+								onSelectShop={setSelectedShopId}
+								onDeselect={() => setSelectedShopId(null)}
+							/>
 
-					{locatedShops.length === 0 && (
-						<View style={styles.emptyBanner} pointerEvents="none">
-							<Feather name="map-pin" size={18} color={colors.textSecondary} />
-							<Text style={styles.emptyBannerText}>No shops with a location yet</Text>
+							{locatedShops.length === 0 && (
+								<View style={styles.emptyBanner} pointerEvents="none">
+									<Feather name="map-pin" size={18} color={colors.textSecondary} />
+									<Text style={styles.emptyBannerText}>No shops with a location yet</Text>
+								</View>
+							)}
+
+							{selectedShop && (
+								<ShopCallout
+									shop={selectedShop}
+									onClose={() => setSelectedShopId(null)}
+									onMoreDetails={() => goToShopDetails(selectedShop._id)}
+									onDirections={() => openShopLocation(selectedShop)}
+								/>
+							)}
 						</View>
+					) : (
+						<ScrollView style={styles.listView} contentContainerStyle={styles.listContent}>
+							{shops.length === 0 ? (
+								<View style={styles.centerContainer}>
+									<Feather name="shopping-bag" size={40} color={colors.textSecondary} />
+									<Text style={styles.errorText}>No shops available</Text>
+								</View>
+							) : (
+								shops.map((shop) => (
+									<ShopListItem
+										key={shop._id}
+										shop={shop}
+										onPress={() => goToShopDetails(shop._id)}
+										onViewLocation={() => openShopLocation(shop)}
+									/>
+								))
+							)}
+						</ScrollView>
 					)}
 
-					{selectedShop && (
-						<ShopCallout
-							shop={selectedShop}
-							onClose={() => setSelectedShopId(null)}
-							onMoreDetails={() => goToShopDetails(selectedShop._id)}
-							onDirections={() => openShopLocation(selectedShop)}
-						/>
-					)}
+					<ViewToggle mode={viewMode} onChange={setViewMode} />
 				</View>
 			)}
 		</SafeAreaView>
+	);
+};
+
+// Floating segmented control to switch between the full-screen map and list views.
+const ViewToggle = ({ mode, onChange }) => {
+	return (
+		<View style={styles.viewToggle}>
+			<TouchableOpacity
+				style={[styles.toggleButton, mode === "map" && styles.toggleButtonActive]}
+				onPress={() => onChange("map")}
+				activeOpacity={0.8}
+			>
+				<Feather name="map" size={15} color={mode === "map" ? colors.cardBackground : colors.textSecondary} />
+				<Text style={[styles.toggleText, mode === "map" && styles.toggleTextActive]}>Map</Text>
+			</TouchableOpacity>
+			<TouchableOpacity
+				style={[styles.toggleButton, mode === "list" && styles.toggleButtonActive]}
+				onPress={() => onChange("list")}
+				activeOpacity={0.8}
+			>
+				<Feather name="list" size={15} color={mode === "list" ? colors.cardBackground : colors.textSecondary} />
+				<Text style={[styles.toggleText, mode === "list" && styles.toggleTextActive]}>List</Text>
+			</TouchableOpacity>
+		</View>
+	);
+};
+
+// List row for a shop; mirrors the map callout content but laid out horizontally.
+const ShopListItem = ({ shop, onPress, onViewLocation }) => {
+	return (
+		<TouchableOpacity style={styles.shopCard} onPress={onPress} activeOpacity={0.7}>
+			{shop.imageUrl ? (
+				<Image source={{ uri: shop.imageUrl }} style={styles.shopImage} contentFit="cover" transition={200} />
+			) : (
+				<View style={styles.shopIconContainer}>
+					<Feather name="shopping-bag" size={24} color={colors.printRequest} />
+				</View>
+			)}
+
+			<View style={styles.shopInfo}>
+				<Text style={styles.shopName} numberOfLines={1}>
+					{shop.name}
+				</Text>
+				<Text style={styles.shopAddress} numberOfLines={1}>
+					{shop.address}
+				</Text>
+				{shop.timings && shop.timings.length > 0 && (
+					<View style={styles.timingRow}>
+						<Feather name="clock" size={12} color={colors.textSecondary} />
+						<Text style={styles.timingText} numberOfLines={1}>
+							{shop.timings[0]}
+						</Text>
+					</View>
+				)}
+				<View style={styles.shopMeta}>
+					<View style={[styles.statusDot, shop.isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
+					<Text style={[styles.statusText, shop.isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
+						{shop.isOnline ? "Online" : "Offline"}
+					</Text>
+				</View>
+
+				<TouchableOpacity style={styles.viewLocationButton} onPress={onViewLocation} activeOpacity={0.7}>
+					<Feather name="map-pin" size={15} color={colors.cardBackground} />
+					<Text style={styles.viewLocationText}>View Location</Text>
+				</TouchableOpacity>
+			</View>
+
+			<Feather name="chevron-right" size={20} color={colors.textSecondary} />
+		</TouchableOpacity>
 	);
 };
 
@@ -164,9 +258,135 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: colors.background,
 	},
+	contentContainer: {
+		flex: 1,
+	},
 	mapContainer: {
 		flex: 1,
 		overflow: "hidden",
+	},
+	listView: {
+		flex: 1,
+	},
+	listContent: {
+		padding: 16,
+		paddingTop: 72,
+		gap: 12,
+	},
+	viewToggle: {
+		position: "absolute",
+		top: 14,
+		alignSelf: "center",
+		flexDirection: "row",
+		backgroundColor: colors.cardBackground,
+		borderRadius: 22,
+		padding: 4,
+		borderWidth: 1,
+		borderColor: colors.borderLight,
+		shadowColor: colors.shadowMedium,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 1,
+		shadowRadius: 8,
+		elevation: 4,
+		zIndex: 10,
+	},
+	toggleButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 6,
+		paddingVertical: 8,
+		paddingHorizontal: 18,
+		borderRadius: 18,
+	},
+	toggleButtonActive: {
+		backgroundColor: colors.printRequest,
+	},
+	toggleText: {
+		fontSize: 13,
+		fontWeight: "700",
+		color: colors.textSecondary,
+	},
+	toggleTextActive: {
+		color: colors.cardBackground,
+	},
+	shopCard: {
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: colors.cardBackground,
+		borderRadius: 16,
+		padding: 14,
+		borderWidth: 1,
+		borderColor: colors.borderLight,
+		shadowColor: colors.shadowLight,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 1,
+		shadowRadius: 8,
+		elevation: 2,
+	},
+	shopImage: {
+		width: 56,
+		height: 56,
+		borderRadius: 12,
+		marginRight: 14,
+		backgroundColor: colors.background,
+	},
+	shopIconContainer: {
+		width: 56,
+		height: 56,
+		borderRadius: 12,
+		backgroundColor: "#FFE8E5",
+		justifyContent: "center",
+		alignItems: "center",
+		marginRight: 14,
+	},
+	shopInfo: {
+		flex: 1,
+		gap: 4,
+	},
+	shopName: {
+		fontSize: 16,
+		fontWeight: "700",
+		color: colors.textPrimary,
+	},
+	shopAddress: {
+		fontSize: 13,
+		color: colors.textSecondary,
+	},
+	timingRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+	},
+	timingText: {
+		fontSize: 12,
+		color: colors.textSecondary,
+		flexShrink: 1,
+	},
+	shopMeta: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		marginTop: 2,
+	},
+	viewLocationButton: {
+		backgroundColor: colors.printRequest,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		alignSelf: "flex-start",
+		paddingVertical: 8,
+		paddingHorizontal: 10,
+		marginTop: 5,
+		borderRadius: 15,
+		gap: 4,
+		minWidth: 200,
+	},
+	viewLocationText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: colors.cardBackground,
+		textAlign: "center",
 	},
 	centerContainer: {
 		flex: 1,
