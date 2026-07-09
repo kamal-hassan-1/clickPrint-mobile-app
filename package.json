@@ -3,12 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
+    "web": "expo start --web --port 8081",
+    "tunnel": "dotenv -- cloudflared tunnel --no-autoupdate --loglevel error run",
+    "start": "concurrently -k -n expo,tunnel -c blue,orange \"npm:web\" \"npm:tunnel\""
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -49,6 +46,9 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "cloudflared": "^0.7.1",
+    "concurrently": "^10.0.3",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
