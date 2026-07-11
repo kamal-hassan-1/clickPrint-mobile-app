@@ -197,7 +197,7 @@ const UploadDocument = () => {
 		<SafeAreaView style={styles.container} edges={["top"]}>
 			<StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 			<View style={styles.header}>
-				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+				<TouchableOpacity onPress={() => router.replace("/(tabs)/home")} style={styles.backButton}>
 					<Feather name="arrow-left" size={24} color={colors.textPrimary} />
 				</TouchableOpacity>
 				<Text style={styles.headerTitle}>Upload Documents</Text>
