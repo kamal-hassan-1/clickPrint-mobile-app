@@ -169,7 +169,12 @@ const HomePage = () => {
 						<TouchableOpacity style={styles.balanceCard}>
 							<View style={styles.balanceContent}>
 								<Text style={styles.balanceLabel}>Current Balance</Text>
-								<Text style={styles.balanceAmount}>Rs. {accountBalance}</Text>
+								<Text style={styles.balanceCurrency}>Rs.</Text>
+								<Text style={styles.balanceAmount}>{accountBalance}</Text>
+							</View>
+							<View style={styles.viewTransactions}>
+								<Text style={styles.viewTransactionsText}>Wallet History</Text>
+								<Feather name="arrow-right" size={26} color={colors.cardBackground} />
 							</View>
 						</TouchableOpacity>
 
@@ -185,9 +190,9 @@ const HomePage = () => {
 								}}
 							>
 								<View style={styles.actionCardIcon}>
-									<Feather name="arrow-down" size={18} color={colors.cardBackground} />
+									<Feather name="arrow-down" size={26} color={colors.cardBackground} />
 								</View>
-								<Text style={styles.actionCardText}>Load Money</Text>
+								<Text style={styles.actionCardText}>Top Up Wallet</Text>
 							</TouchableOpacity>
 
 							{/* New Print Card */}
@@ -198,10 +203,10 @@ const HomePage = () => {
 									router.push("/upload-document");
 								}}
 							>
-								<Text style={styles.actionCardText}>New Print</Text>
 								<View style={styles.actionCardIconRight}>
-									<Feather name="arrow-up-right" size={18} color={colors.cardBackground} />
+									<Feather name="arrow-up-right" size={26} color={colors.cardBackground} />
 								</View>
+								<Text style={styles.actionCardText}>New Print Job</Text>
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -322,17 +327,34 @@ const styles = StyleSheet.create({
 	},
 	balanceLabel: {
 		fontSize: 18,
-		fontWeight: "500",
+		fontWeight: "600",
 		color: colors.cardBackground,
-		opacity: 0.9,
 		marginBottom: 8,
 		letterSpacing: 0.3,
 	},
+	balanceCurrency: {
+		fontSize: 35,
+		fontWeight: "600",
+		color: colors.cardBackground,
+		letterSpacing: 0.3,
+		marginTop: 12,
+	},
 	balanceAmount: {
-		fontSize: Math.min(SCREEN_WIDTH * 0.16, 52),
+		fontSize: Math.min(SCREEN_WIDTH * 0.16, 45),
 		fontWeight: "700",
 		color: colors.cardBackground,
 		letterSpacing: -2,
+	},
+	viewTransactions: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+	},
+	viewTransactionsText: {
+		fontSize: 18,
+		fontWeight: "600",
+		color: colors.cardBackground,
+		lineHeight: 22,
 	},
 	actionCardsColumn: {
 		flex: 1,
@@ -359,16 +381,12 @@ const styles = StyleSheet.create({
 	actionCardIcon: {
 		width: 35,
 		height: 35,
-		borderRadius: 12,
-		backgroundColor: colors.cardOverlay,
 		justifyContent: "center",
 		alignItems: "center",
 	},
 	actionCardIconRight: {
 		width: 35,
 		height: 35,
-		borderRadius: 12,
-		backgroundColor: colors.cardOverlay,
 		justifyContent: "center",
 		alignItems: "center",
 		alignSelf: "flex-end",

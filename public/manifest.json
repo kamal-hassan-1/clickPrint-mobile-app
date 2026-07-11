@@ -10,16 +10,16 @@
   "categories": ["productivity", "utilities"],
   "screenshots": [
     {
-      "src": "/screenshots/mobile-1.png",
+      "src": "/screenshots/mobile-1.jpeg",
       "sizes": "1080x1920",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Order prints from nearby shops"
     },
     {
-      "src": "/screenshots/mobile-2.png",
+      "src": "/screenshots/mobile-2.jpeg",
       "sizes": "1080x1920",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Upload, choose a shop, pick up"
     },

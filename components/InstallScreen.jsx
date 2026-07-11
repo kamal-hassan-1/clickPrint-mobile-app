@@ -16,8 +16,6 @@
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 
-const LOGO = "/icons/icon-192.png";
-
 const isIOS = () =>
 	typeof navigator !== "undefined" &&
 	(/iphone|ipad|ipod/i.test(navigator.userAgent) ||
@@ -98,9 +96,6 @@ export default function InstallScreen() {
 							<button className="cp-btn cp-btn-primary cp-btn-pulse" onClick={handleInstall}>
 								{ctaLabel}
 							</button>
-							<button className="cp-btn cp-btn-ghost" onClick={() => scrollTo("how")}>
-								See how it works
-							</button>
 						</div>
 
 						<div className="cp-trust cp-rise" style={{ animationDelay: ".26s" }}>
@@ -138,18 +133,20 @@ export default function InstallScreen() {
 						)}
 					</div>
 
-					{/* animated phone -> printer flow scene */}
-					<HeroScene />
+					{/* animated phone -> printer flow scene, with a scroll cue beneath it */}
+					<div className="cp-scene-col cp-rise" style={{ animationDelay: ".18s" }}>
+						<HeroScene />
+						<a className="cp-scroll" onClick={() => scrollTo("how")} aria-label="See how it works">
+							<span className="cp-scroll-label">See how it works</span>
+							<span className="cp-scroll-chevron">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+									<path d="M5 8.5 12 15l7-6.5" />
+									<path d="M5 13.5 12 20l7-6.5" opacity=".45" />
+								</svg>
+							</span>
+						</a>
+					</div>
 				</div>
-
-				<a className="cp-scroll" onClick={() => scrollTo("how")} aria-label="Scroll down">
-					<span className="cp-scroll-label">Scroll</span>
-					<span className="cp-scroll-btn">
-						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-							<path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" />
-						</svg>
-					</span>
-				</a>
 			</section>
 
 			{/* ------------------------------- HOW IT WORKS ------------------------------ */}
@@ -548,21 +545,20 @@ const PAGE_CSS = `
 .cp-help-text { margin: 0; color: var(--body); font-size: 14px; line-height: 1.65; }
 .cp-help b { color: var(--ink); }
 
-/* ---- scroll hint ---- */
+/* ---- scroll cue (under the hero scene) ---- */
+.cp-scene-col { display: flex; flex-direction: column; align-items: center; }
 .cp-scroll {
-	position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-	display: none; flex-direction: column; align-items: center; gap: 6px;
-	cursor: pointer; color: var(--muted);
+	display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+	margin-top: clamp(28px, 5vw, 48px); cursor: pointer; color: var(--muted);
+	transition: color .2s;
 }
-@media (min-width: 960px) { .cp-scroll { display: flex; } }
-.cp-scroll-label { font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-.cp-scroll-btn {
-	width: 40px; height: 40px; border-radius: 50%; background: #fff;
-	border: 1.5px solid var(--line); box-shadow: 0 6px 18px rgba(143,155,179,.22);
+.cp-scroll:hover { color: var(--ink); }
+.cp-scroll-label { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; }
+.cp-scroll-chevron {
 	display: flex; align-items: center; justify-content: center;
-	animation: cpScrollHint 1.8s ease-in-out infinite;
+	color: var(--accent); animation: cpScrollHint 1.8s ease-in-out infinite;
 }
-.cp-scroll-btn svg { width: 18px; height: 18px; }
+.cp-scroll-chevron svg { width: 26px; height: 26px; }
 
 /* ---- hero scene ---- */
 .cp-scene {
