@@ -54,6 +54,8 @@ const SETTING_LABELS = {
 	sidedness: "Sidedness",
 };
 
+const formatCurrency = (amount) => `Rs. ${amount ?? 0}`;
+
 //----------------------------------- COMPONENTS -----------------------------------//
 
 const TransactionDetails = () => {
@@ -65,6 +67,17 @@ const TransactionDetails = () => {
 	const [shopImageUrl, setShopImageUrl] = useState(null);
 	const [cancelling, setCancelling] = useState(false);
 	const [jobStatus, setJobStatus] = useState(transaction.status);
+	const [job, setJob] = useState(null);
+
+	// Prefer freshly fetched job data, fall back to the list payload for instant render.
+	const files = job?.files ?? transaction.files ?? [];
+	const cost = job?.cost ?? null;
+	const createdBy = job?.createdBy ?? null;
+	const statusHistory = job?.statusHistory ?? transaction.statusHistory ?? [];
+	const fileCount = files.length;
+	const totalPages = files.reduce((sum, f) => sum + (f.file?.numberOfPages || 0), 0);
+	const totalCopies = files.reduce((sum, f) => sum + (f.settings?.numberOfCopies || 0), 0);
+	const totalCost = cost?.total ?? transaction.cost ?? 0;
 
 	const CANCELLABLE_STATUSES = ["submitted", "queued", "pending", "processing"];
 
@@ -138,6 +151,28 @@ const TransactionDetails = () => {
 		};
 		fetchShopName();
 	}, [transaction.shopId]);
+
+	useEffect(() => {
+		const fetchJob = async () => {
+			if (!transaction.id) return;
+			try {
+				const token = await SecureStore.getItemAsync("authToken");
+				const res = await fetch(`${config.apiBaseUrl}/jobs/${transaction.id}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+				const data = await res.json();
+				if (data.success && data.data?.job) {
+					const fetchedJob = data.data.job;
+					setJob(fetchedJob);
+					setJobStatus(fetchedJob.status);
+					if (fetchedJob.shop?.name) setShopName(fetchedJob.shop.name);
+				}
+			} catch (e) {
+				console.error("Error fetching job:", e);
+			}
+		};
+		fetchJob();
+	}, [transaction.id]);
 
 	const formatDateTime = (isoString) => {
 		const date = new Date(isoString);
@@ -222,6 +257,26 @@ const TransactionDetails = () => {
 					{renderProgressBar(jobStatus)}
 				</View>
 
+				{/* Quick Stats */}
+				<View style={styles.statsRow}>
+					<View style={styles.statCard}>
+						<Text style={styles.statValue}>{fileCount}</Text>
+						<Text style={styles.statLabel}>File{fileCount !== 1 ? "s" : ""}</Text>
+					</View>
+					<View style={styles.statCard}>
+						<Text style={styles.statValue}>{totalPages}</Text>
+						<Text style={styles.statLabel}>Page{totalPages !== 1 ? "s" : ""}</Text>
+					</View>
+					<View style={styles.statCard}>
+						<Text style={styles.statValue}>{totalCopies}</Text>
+						<Text style={styles.statLabel}>{totalCopies !== 1 ? "Copies" : "Copy"}</Text>
+					</View>
+					<View style={styles.statCard}>
+						<Text style={[styles.statValue, { color: colors.printRequest }]}>{totalCost}</Text>
+						<Text style={styles.statLabel}>Rs. Total</Text>
+					</View>
+				</View>
+
 				{/* Job Info */}
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
@@ -229,53 +284,103 @@ const TransactionDetails = () => {
 						<Text style={styles.sectionTitle}>Job Info</Text>
 					</View>
 					<View style={styles.card}>
-						<InfoRow label="Total Files" value={`${transaction.fileCount} file${transaction.fileCount !== 1 ? "s" : ""}`} />
+						<InfoRow label="Shop" value={shopName} />
+						{createdBy?.name && <InfoRow label="Ordered By" value={createdBy.name} />}
+						{createdBy?.number && <InfoRow label="Contact" value={createdBy.number} />}
+						<InfoRow label="Total Files" value={`${fileCount} file${fileCount !== 1 ? "s" : ""}`} />
+						<InfoRow label="Total Pages" value={`${totalPages}`} />
+						<InfoRow label="Total Copies" value={`${totalCopies}`} />
+						<InfoRow label="Job ID" value={transaction.id} mono />
 					</View>
 				</View>
+
+				{/* Cost Breakdown */}
+				{cost && (cost.lines?.length > 0 || cost.extra?.length > 0) && (
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Feather name="dollar-sign" size={18} color={colors.printRequest} />
+							<Text style={styles.sectionTitle}>Cost Breakdown</Text>
+						</View>
+						<View style={styles.card}>
+							{(cost.lines || []).map((line, index) => {
+								const [code, qty, rate, lineTotal] = line;
+								return (
+									<View key={`line-${index}`} style={styles.costRow}>
+										<View style={styles.costRowLeft}>
+											<Text style={styles.costLabel}>{code}</Text>
+											<Text style={styles.costSubLabel}>{qty} × {formatCurrency(rate)}</Text>
+										</View>
+										<Text style={styles.costValue}>{formatCurrency(lineTotal)}</Text>
+									</View>
+								);
+							})}
+							{(cost.extra || []).map((extra, index) => {
+								const [label, amount] = extra;
+								return (
+									<View key={`extra-${index}`} style={styles.costRow}>
+										<View style={styles.costRowLeft}>
+											<Text style={styles.costLabel}>{label}</Text>
+										</View>
+										<Text style={styles.costValue}>{formatCurrency(amount)}</Text>
+									</View>
+								);
+							})}
+							<View style={styles.totalRow}>
+								<Text style={styles.totalLabel}>Total</Text>
+								<Text style={styles.totalValue}>{formatCurrency(totalCost)}</Text>
+							</View>
+						</View>
+					</View>
+				)}
 
 				{/* Files Section */}
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
 						<Feather name="file-text" size={18} color={colors.printRequest} />
-						<Text style={styles.sectionTitle}>Files ({transaction.fileCount})</Text>
+						<Text style={styles.sectionTitle}>Files ({fileCount})</Text>
 					</View>
-					{transaction.files.map((file, index) => (
-						<View key={file.file?._id ?? index} style={[styles.fileCard, index < transaction.files.length - 1 && styles.fileCardSpacing]}>
-							<View style={styles.fileCardHeader}>
-								<View style={styles.fileIcon}>
-									<Feather name="file" size={16} color={colors.printRequest} />
+					{files.map((file, index) => {
+						const pages = file.file?.numberOfPages;
+						return (
+							<View key={file.file?._id ?? index} style={[styles.fileCard, index < files.length - 1 && styles.fileCardSpacing]}>
+								<View style={styles.fileCardHeader}>
+									<View style={styles.fileIcon}>
+										<Feather name="file" size={16} color={colors.printRequest} />
+									</View>
+									<View style={styles.fileCardHeaderText}>
+										<Text style={styles.fileLabel} numberOfLines={Infinity}>
+											{file.file?.originalName || `File ${index + 1}`}
+										</Text>
+										{pages != null && (
+											<Text style={styles.fileMeta}>{pages} page{pages !== 1 ? "s" : ""}</Text>
+										)}
+									</View>
 								</View>
-								<Text style={styles.fileLabel} numberOfLines={Infinity}>
-									{file.file?.originalName || `File ${index + 1}`}
-								</Text>
+
+								<View style={styles.settingsDivider} />
+
+								{Object.entries(file.settings || {}).map(([key, value], i, arr) => (
+									<View key={key} style={[styles.settingRow, i < arr.length - 1 && styles.settingRowBorder]}>
+										<Text style={styles.settingLabel}>{SETTING_LABELS[key] || key}</Text>
+										<Text style={styles.settingValue}>{formatSettingValue(key, value)}</Text>
+									</View>
+								))}
 							</View>
-							<Text style={styles.fileHash} numberOfLines={1}>
-								{file.hash}
-							</Text>
-
-							<View style={styles.settingsDivider} />
-
-							{Object.entries(file.settings).map(([key, value], i, arr) => (
-								<View key={key} style={[styles.settingRow, i < arr.length - 1 && styles.settingRowBorder]}>
-									<Text style={styles.settingLabel}>{SETTING_LABELS[key] || key}</Text>
-									<Text style={styles.settingValue}>{formatSettingValue(key, value)}</Text>
-								</View>
-							))}
-						</View>
-					))}
+						);
+					})}
 				</View>
 
 				{/* Status History */}
-				{transaction.statusHistory.length > 0 && (
+				{statusHistory.length > 0 && (
 					<View style={styles.section}>
 						<View style={styles.sectionHeader}>
 							<Feather name="clock" size={18} color={colors.printRequest} />
 							<Text style={styles.sectionTitle}>Status History</Text>
 						</View>
 						<View style={[styles.card, styles.historyCard]}>
-							{transaction.statusHistory.map((entry, index) => {
+							{statusHistory.map((entry, index) => {
 								const entryConfig = STATUS_CONFIG[entry.status] || { label: entry.status, color: colors.textSecondary, bg: colors.background };
-								const isLast = index === transaction.statusHistory.length - 1;
+								const isLast = index === statusHistory.length - 1;
 								return (
 									<View key={`${entry.status}-${index}`} style={styles.timelineItem}>
 										<View style={styles.timelineLeft}>
@@ -517,12 +622,87 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		color: colors.textPrimary,
 	},
-	fileHash: {
+	fileCardHeaderText: {
+		flex: 1,
+	},
+	fileMeta: {
+		fontSize: 12,
+		color: colors.textSecondary,
+		fontWeight: "500",
+		marginTop: 2,
+	},
+	statsRow: {
+		flexDirection: "row",
+		gap: 10,
+		marginBottom: 20,
+	},
+	statCard: {
+		flex: 1,
+		backgroundColor: colors.cardBackground,
+		borderRadius: 14,
+		paddingVertical: 14,
+		paddingHorizontal: 6,
+		alignItems: "center",
+		borderWidth: 1,
+		borderColor: colors.borderLight,
+		shadowColor: colors.shadowLight,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 1,
+		shadowRadius: 8,
+		elevation: 2,
+	},
+	statValue: {
+		fontSize: 20,
+		fontWeight: "800",
+		color: colors.textPrimary,
+		marginBottom: 4,
+	},
+	statLabel: {
 		fontSize: 11,
 		color: colors.textSecondary,
-		fontFamily: "monospace",
-		marginLeft: 48,
-		marginBottom: 8,
+		fontWeight: "500",
+	},
+	costRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingVertical: 13,
+		borderBottomWidth: 1,
+		borderBottomColor: colors.borderLight,
+	},
+	costRowLeft: {
+		flex: 1,
+	},
+	costLabel: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: colors.textPrimary,
+	},
+	costSubLabel: {
+		fontSize: 12,
+		color: colors.textSecondary,
+		marginTop: 2,
+	},
+	costValue: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: colors.textPrimary,
+	},
+	totalRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingVertical: 14,
+	},
+	totalLabel: {
+		fontSize: 16,
+		fontWeight: "700",
+		color: colors.textPrimary,
+	},
+	totalValue: {
+		fontSize: 18,
+		fontWeight: "800",
+		color: colors.printRequest,
 	},
 	settingsDivider: {
 		height: 1,
