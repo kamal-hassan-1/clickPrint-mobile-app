@@ -186,7 +186,7 @@ const HomePage = () => {
 							<TouchableOpacity
 								style={[styles.actionCard, styles.creditWalletCard]}
 								onPress={() => {
-									showAlert("Payment functionality to be added soon!");
+									router.push("/topup");
 								}}
 							>
 								<View style={styles.actionCardIcon}>
