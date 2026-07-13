@@ -166,17 +166,13 @@ const HomePage = () => {
 					<View style={styles.cardsRow}>
 						{/* Current Balance Card */}
 
-						<TouchableOpacity style={styles.balanceCard}>
+						<View style={styles.balanceCard}>
 							<View style={styles.balanceContent}>
 								<Text style={styles.balanceLabel}>Current Balance</Text>
 								<Text style={styles.balanceCurrency}>Rs.</Text>
 								<Text style={styles.balanceAmount}>{accountBalance}</Text>
 							</View>
-							<View style={styles.viewTransactions}>
-								<Text style={styles.viewTransactionsText}>Wallet History</Text>
-								<Feather name="arrow-right" size={26} color={colors.cardBackground} />
-							</View>
-						</TouchableOpacity>
+						</View>
 
 						{/* Action Cards Column */}
 
@@ -245,7 +241,7 @@ const HomePage = () => {
 							<View style={styles.activeJobsHeader}>
 								<Text style={styles.activeJobsTitle}>Active Jobs</Text>
 							</View>
-							<View>
+							<View style={styles.innerListContainer}>
 								{activeJobs.map((job) => (
 									<ActiveJobCard
 										key={job.id}

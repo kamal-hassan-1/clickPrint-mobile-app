@@ -96,7 +96,7 @@ const TopUpConfirm = () => {
 			setError(null);
 			const token = await SecureStore.getItemAsync("authToken");
 
-			const ppfid = await uploadProof(token);
+			const ppfid = await   (token);
 
 			const payload = { amount: Number(amount), ppfid };
 
