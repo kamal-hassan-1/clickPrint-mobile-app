@@ -168,7 +168,7 @@ const HomePage = () => {
 
 						<TouchableOpacity style={styles.balanceCard}>
 							<View style={styles.balanceContent}>
-								<Text style={styles.balanceLabel}>Current Balaaaaaance</Text>
+								<Text style={styles.balanceLabel}>Current Balance</Text>
 								<Text style={styles.balanceCurrency}>Rs.</Text>
 								<Text style={styles.balanceAmount}>{accountBalance}</Text>
 							</View>

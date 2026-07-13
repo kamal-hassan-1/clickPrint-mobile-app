@@ -8,6 +8,7 @@ import { Animated, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import config from "../config/config";
 import { colors } from "../constants/colors";
+import { useAuth } from "../context/auth";
 
 //----------------------------------- CONSTANTS -----------------------------------//
 
@@ -17,10 +18,12 @@ const API_BASE_URL = config.apiBaseUrl;
 
 const ProfileSetup = () => {
 	const router = useRouter();
+	const { completeProfile } = useAuth();
 	const [userName, setUserName] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState(false);
+
 
 	// Animations
 	const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -102,7 +105,7 @@ const ProfileSetup = () => {
 			const data = await response.json();
 
 			if (response.ok) {
-				await SecureStore.setItemAsync("name", data.data.profile.name);
+				await completeProfile(data.data.profile.name);
 				setSuccess(true);
 
 				Animated.timing(checkmarkAnim, {
@@ -206,7 +209,7 @@ const ProfileSetup = () => {
 										(loading ||
 											trimedName.length < 5 ||
 											trimedName.length > 20) &&
-										styles.submitButtonLoading,
+										styles.submitButtonDisabled,
 									]}
 									onPress={handleSubmit}
 									disabled={loading || trimedName.length < 5 || trimedName.length > 20}
@@ -331,6 +334,9 @@ const styles = StyleSheet.create({
 		color: colors.textPrimary,
 		fontWeight: "500",
 		paddingVertical: 8,
+		// Remove the browser's default focus outline on web (renders as a
+		// solid rectangle around the input). No-op on native.
+		...Platform.select({ web: { outlineStyle: "none" } }),
 	},
 	errorText: {
 		fontSize: 14,
@@ -357,8 +363,9 @@ const styles = StyleSheet.create({
 		elevation: 6,
 		marginBottom: 20,
 	},
-	submitButtonLoading: {
-		opacity: 0.8,
+	submitButtonDisabled: {
+		backgroundColor: colors.navInactive || "#858b96",
+		elevation: 0,
 	},
 	buttonContent: {
 		flexDirection: "row",
