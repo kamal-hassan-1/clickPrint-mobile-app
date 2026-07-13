@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "../context/auth";
 import { colors } from "../constants/colors";
 import WebInstallGate from "../components/WebInstallGate";
+import AlertHost from "../components/CustomAlert";
 
 SplashScreen.preventAutoHideAsync();
 SystemUI.setBackgroundColorAsync(colors.background);
@@ -36,6 +37,7 @@ export default function RootLayout() {
       <AuthProvider>
         <RootNavigation />
       </AuthProvider>
+      <AlertHost />
     </WebInstallGate>
   );
 }

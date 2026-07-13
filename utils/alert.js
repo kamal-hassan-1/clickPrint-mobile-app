@@ -4,16 +4,30 @@ import { Alert, Platform } from "react-native";
 
 //----------------------------------- ALERT -----------------------------------//
 
-// React Native's Alert.alert has no working button support on web: the dialog
-// either doesn't render or shows no buttons, so button `onPress` callbacks never
-// fire. This shim keeps the native Alert.alert on iOS/Android and falls back to
-// the browser's window.alert / window.confirm on web, mapping the button array
-// onto those callbacks. Signature matches Alert.alert so call sites just swap
-// `Alert.alert(...)` for `showAlert(...)`.
+// App-wide alert entry point. Every call site uses `showAlert(title, message,
+// buttons)` — matching React Native's Alert.alert signature — so the underlying
+// presentation can change without touching them.
+//
+// The default presentation is a custom themed popup (see components/CustomAlert):
+// AlertHost registers an imperative handler here at app startup, and showAlert
+// routes to it. If no handler is registered yet (e.g. an alert fires before the
+// host mounts, or in a context where it isn't rendered), we fall back to the
+// native Alert.alert on iOS/Android and the browser's window.alert /
+// window.confirm on web — the same behaviour this shim had previously.
+
+let alertHandler = null;
+
+// Called by AlertHost on mount. Returns an unregister function for cleanup.
+export function registerAlertHandler(handler) {
+	alertHandler = handler;
+	return () => {
+		if (alertHandler === handler) alertHandler = null;
+	};
+}
 
 const joinText = (title, message) => [title, message].filter(Boolean).join("\n\n");
 
-export function showAlert(title, message, buttons) {
+function fallbackAlert(title, message, buttons) {
 	if (Platform.OS !== "web") {
 		Alert.alert(title, message, buttons);
 		return;
@@ -21,7 +35,6 @@ export function showAlert(title, message, buttons) {
 
 	const text = joinText(title, message);
 
-	// No buttons, or a single acknowledgement button: notify then run its handler.
 	if (!buttons || buttons.length === 0) {
 		window.alert(text);
 		return;
@@ -43,6 +56,14 @@ export function showAlert(title, message, buttons) {
 	} else {
 		cancelBtn?.onPress?.();
 	}
+}
+
+export function showAlert(title, message, buttons) {
+	if (alertHandler) {
+		alertHandler({ title, message, buttons });
+		return;
+	}
+	fallbackAlert(title, message, buttons);
 }
 
 export default showAlert;

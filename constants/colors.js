@@ -44,4 +44,8 @@ export const colors = {
 
 	// Border Colors
 	borderLight: "rgba(228, 233, 242, 0.8)",
+
+	// Status Colors
+	danger: "#FF5A5F",
+	expense: "#FF5A5F",
 };
