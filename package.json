@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "expo": "expo start",
+    "dev": "expo start",
     "tunnel": "dotenv -- cloudflared tunnel --no-autoupdate --loglevel error run",
     "start": "concurrently -k -n expo,tunnel -c blue,orange \"npm:expo\" \"npm:tunnel\""
   },
