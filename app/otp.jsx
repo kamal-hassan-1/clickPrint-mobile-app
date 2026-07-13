@@ -66,7 +66,7 @@ const VerifyCode = () => {
 		if (value && index < 4) {
 			inputRefs.current[index + 1]?.focus();
 		}
-		if (newCodes.every((code) => code !== "") && index === 4 && !verifying) {
+		if (newCodes.every((code) => code !== "") && !verifying) {
 			handleVerify(newCodes.join(""));
 		}
 	};
