@@ -220,7 +220,7 @@ const HomePage = () => {
 								<Text style={styles.historyTitle}>My Drafts</Text>
 							</View>
 							{drafts.length > 0 ? (
-								<View style={styles.innerListContainer}>
+								<View>
 									{drafts.map((draft) => (
 										<DraftItem
 											key={draft._id}
@@ -245,7 +245,7 @@ const HomePage = () => {
 							<View style={styles.activeJobsHeader}>
 								<Text style={styles.activeJobsTitle}>Active Jobs</Text>
 							</View>
-							<View style={styles.innerListContainer}>
+							<View>
 								{activeJobs.map((job) => (
 									<ActiveJobCard
 										key={job.id}
@@ -365,10 +365,6 @@ const styles = StyleSheet.create({
 		borderRadius: 24,
 		padding: 20,
 		justifyContent: "space-between",
-		shadowOffset: { width: 0, height: 8 },
-		shadowOpacity: 0.3,
-		shadowRadius: 24,
-		elevation: 6,
 	},
 	creditWalletCard: {
 		backgroundColor: colors.creditWallet,
@@ -404,18 +400,9 @@ const styles = StyleSheet.create({
 		gap: 16,
 	},
 	listCard: {
-		flex: 1,
 		backgroundColor: colors.cardBackground,
 		borderRadius: 24,
 		padding: 20,
-		shadowColor: colors.shadowMedium,
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.1,
-		shadowRadius: 12,
-		elevation: 4,
-	},
-	innerListContainer: {
-		gap: 12,
 	},
 	historyHeader: {
 		flexDirection: "row",

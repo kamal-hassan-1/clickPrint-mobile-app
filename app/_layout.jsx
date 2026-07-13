@@ -19,9 +19,14 @@ function RootNavigation() {
   const { authState } = useAuth();
   const router = useRouter();
   const segments = useSegments();
-  // Only the very first resolved route is auto-corrected below; once settled,
-  // in-app navigation (to detail screens, tabs, etc.) is left alone so authed
-  // users can freely visit routes outside "(tabs)".
+  // Tracks whether the splash screen has been hidden once. Unlike that,
+  // the redirect below is NOT one-time: it re-enforces on every authState/
+  // route change for the whole session, so a user who ends up on a route
+  // that doesn't match their authState (e.g. backgrounding the app mid
+  // onboarding, a deep link, a back gesture) is always bounced back, not
+  // just on the first resolved route. Authed users with a completed profile
+  // are never targeted by this, since redirectTarget only fires for the
+  // three specific mismatches below — free in-app navigation is unaffected.
   const [initialRouteReady, setInitialRouteReady] = useState(false);
 
   const inGuestOnly = isGuestOnlyRoute(segments[0]);
@@ -33,13 +38,15 @@ function RootNavigation() {
   else if (authState === "authed" && (inGuestOnly || inProfileSetup)) redirectTarget = "/(tabs)/home";
 
   useEffect(() => {
-    if (authState === "checking" || initialRouteReady) return;
+    if (authState === "checking") return;
     if (redirectTarget) {
       router.replace(redirectTarget);
       return;
     }
-    setInitialRouteReady(true);
-    SplashScreen.hideAsync();
+    if (!initialRouteReady) {
+      setInitialRouteReady(true);
+      SplashScreen.hideAsync();
+    }
   }, [authState, redirectTarget, initialRouteReady, router]);
 
   // Keep the splash screen up until the route actually matches the resolved

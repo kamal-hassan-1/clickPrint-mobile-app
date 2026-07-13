@@ -4,10 +4,8 @@ import { colors } from "../../constants/colors";
 
 const STATUS_CONFIG = {
 	completed: { label: "Completed", color: colors.primary, bg: "rgba(0, 217, 163, 0.12)" },
-	submitted: { label: "Submitted", color: colors.creditWallet, bg: "rgba(59, 158, 255, 0.12)" },
-	processing: { label: "Processing", color: "#F59E0B", bg: "rgba(245, 158, 11, 0.12)" },
 	cancelled: { label: "Cancelled", color: colors.printRequest, bg: "rgba(255, 139, 123, 0.12)" },
-	pending: { label: "Pending", color: "#F59E0B", bg: "rgba(245, 158, 11, 0.12)" },
+	failed: { label: "Failed", color: colors.danger, bg: "rgba(255, 90, 95, 0.12)" },
 };
 
 const TransactionItem = ({ transaction, onPress }) => {

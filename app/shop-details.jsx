@@ -49,7 +49,7 @@ const ShopDetails = () => {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [onlineOnly, setOnlineOnly] = useState(false);
+	const [onlineOnly, setOnlineOnly] = useState(true);
 
 	// Parse params from print-settings (fast path); the draft is the source of
 	// truth and re-hydrates these below when resuming / coming back.

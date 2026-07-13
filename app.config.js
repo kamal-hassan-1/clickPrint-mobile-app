@@ -44,6 +44,7 @@ export default {
 			"expo-web-browser",
 			// Push Notification 1 :: Added expo-notification to plugins in config
 			"expo-notifications",
+			"@react-native-community/datetimepicker",
 			[
 				"expo-splash-screen",
 				{

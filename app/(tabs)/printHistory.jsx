@@ -1,13 +1,46 @@
 //----------------------------------- IMPORTS -----------------------------------//
 
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import { useTransactions } from "../../hooks/useTransactions";
+import { formatDate } from "../../utils/helper";
 import TransactionList from "../components/TransactionList";
+
+//----------------------------------- HELPERS -----------------------------------//
+
+// HTML <input type="date"> works with "YYYY-MM-DD" strings, parsed/formatted
+// in local time to avoid the UTC-parsing day-shift new Date(string) has.
+const toDateInputValue = (date) => {
+	if (!date) return "";
+	const y = date.getFullYear();
+	const m = String(date.getMonth() + 1).padStart(2, "0");
+	const d = String(date.getDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
+};
+
+const fromDateInputValue = (value) => {
+	if (!value) return null;
+	const [y, m, d] = value.split("-").map(Number);
+	return new Date(y, m - 1, d);
+};
+
+
+const webDateInputStyle = {
+	width: "100%",
+	boxSizing: "border-box",
+	border: `1px solid ${colors.borderLight}`,
+	borderRadius: 12,
+	padding: 12,
+	fontSize: 14,
+	color: colors.textPrimary,
+	backgroundColor: "transparent",
+	fontFamily: "inherit",
+};
 
 //----------------------------------- COMPONENTS -----------------------------------//
 
@@ -17,8 +50,10 @@ const PrintHistory = () => {
 
 	const [filterModalVisible, setFilterModalVisible] = useState(false);
 	const [sortModalVisible, setSortModalVisible] = useState(false);
-	const [dateFrom, setDateFrom] = useState("");
-	const [dateTo, setDateTo] = useState("");
+	const [dateFrom, setDateFrom] = useState(null);
+	const [dateTo, setDateTo] = useState(null);
+	// "from" | "to" | null — which native picker (if any) is currently open.
+	const [activeDatePicker, setActiveDatePicker] = useState(null);
 	const [selectedStatus, setSelectedStatus] = useState("all");
 	const [sortBy, setSortBy] = useState("date");
 	const [sortOrder, setSortOrder] = useState("desc");
@@ -29,18 +64,14 @@ const PrintHistory = () => {
 
 		// Filter by Date From
 		if (dateFrom) {
-			const fromDate = new Date(dateFrom);
-			if (!isNaN(fromDate.getTime())) {
-				filtered = filtered.filter((t) => new Date(t.timestamp || t.date) >= fromDate);
-			}
+			filtered = filtered.filter((t) => new Date(t.timestamp || t.date) >= dateFrom);
 		}
 
-		// Filter by Date To
+		// Filter by Date To (inclusive of the whole day)
 		if (dateTo) {
-			const toDate = new Date(dateTo);
-			if (!isNaN(toDate.getTime())) {
-				filtered = filtered.filter((t) => new Date(t.timestamp || t.date) <= toDate);
-			}
+			const endOfDay = new Date(dateTo);
+			endOfDay.setHours(23, 59, 59, 999);
+			filtered = filtered.filter((t) => new Date(t.timestamp || t.date) <= endOfDay);
 		}
 
 		// Filter by Status
@@ -76,8 +107,9 @@ const PrintHistory = () => {
 	}, [backendTransactions, dateFrom, dateTo, selectedStatus, sortBy, sortOrder]);
 
 	const clearFilters = () => {
-		setDateFrom("");
-		setDateTo("");
+		setDateFrom(null);
+		setDateTo(null);
+		setActiveDatePicker(null);
 		setSelectedStatus("all");
 		setSortBy("date");
 		setSortOrder("desc");
@@ -213,32 +245,69 @@ const PrintHistory = () => {
 							<View style={styles.dateInputs}>
 								<View style={styles.dateInputWrapper}>
 									<Text style={styles.dateInputLabel}>From</Text>
-									<TextInput
-										style={styles.dateInput}
-										placeholder="YYYY-MM-DD"
-										value={dateFrom}
-										onChangeText={setDateFrom}
-										placeholderTextColor={colors.textSecondary}
-									/>
+									{Platform.OS === "web" ? (
+										<input
+											type="date"
+											value={toDateInputValue(dateFrom)}
+											max={toDateInputValue(dateTo) || undefined}
+											onChange={(e) => setDateFrom(fromDateInputValue(e.target.value))}
+											style={webDateInputStyle}
+										/>
+									) : (
+										<TouchableOpacity style={styles.dateInput} onPress={() => setActiveDatePicker("from")}>
+											<Text style={dateFrom ? styles.dateInputValueText : styles.dateInputPlaceholderText}>
+												{dateFrom ? formatDate(dateFrom) : "Select date"}
+											</Text>
+										</TouchableOpacity>
+									)}
 								</View>
 								<View style={styles.dateInputWrapper}>
 									<Text style={styles.dateInputLabel}>To</Text>
-									<TextInput
-										style={styles.dateInput}
-										placeholder="YYYY-MM-DD"
-										value={dateTo}
-										onChangeText={setDateTo}
-										placeholderTextColor={colors.textSecondary}
-									/>
+									{Platform.OS === "web" ? (
+										<input
+											type="date"
+											value={toDateInputValue(dateTo)}
+											min={toDateInputValue(dateFrom) || undefined}
+											onChange={(e) => setDateTo(fromDateInputValue(e.target.value))}
+											style={webDateInputStyle}
+										/>
+									) : (
+										<TouchableOpacity style={styles.dateInput} onPress={() => setActiveDatePicker("to")}>
+											<Text style={dateTo ? styles.dateInputValueText : styles.dateInputPlaceholderText}>
+												{dateTo ? formatDate(dateTo) : "Select date"}
+											</Text>
+										</TouchableOpacity>
+									)}
 								</View>
 							</View>
+
+							{Platform.OS !== "web" && activeDatePicker && (
+								<View style={styles.inlinePickerWrapper}>
+									<DateTimePicker
+										value={(activeDatePicker === "from" ? dateFrom : dateTo) || new Date()}
+										mode="date"
+										display={Platform.OS === "ios" ? "spinner" : "default"}
+										onChange={(event, selected) => {
+											if (Platform.OS === "android") setActiveDatePicker(null);
+											if (event.type === "dismissed" || !selected) return;
+											if (activeDatePicker === "from") setDateFrom(selected);
+											else setDateTo(selected);
+										}}
+									/>
+									{Platform.OS === "ios" && (
+										<TouchableOpacity style={styles.pickerDoneButton} onPress={() => setActiveDatePicker(null)}>
+											<Text style={styles.pickerDoneButtonText}>Done</Text>
+										</TouchableOpacity>
+									)}
+								</View>
+							)}
 						</View>
 
 						{/* Status Filter */}
 						<View style={styles.filterSection}>
 							<Text style={styles.filterLabel}>Status</Text>
 							<View style={styles.statusOptions}>
-								{["all", "completed", "submitted", "processing", "pending", "cancelled"].map((status) => (
+								{["all", "completed", "cancelled", "failed"].map((status) => (
 									<TouchableOpacity
 										key={status}
 										style={[
@@ -489,9 +558,33 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: colors.borderLight,
 		borderRadius: 12,
-		padding: 12,
+		paddingHorizontal: 12,
+		paddingVertical: 12,
+		justifyContent: "center",
+	},
+	dateInputValueText: {
 		fontSize: 14,
 		color: colors.textPrimary,
+	},
+	dateInputPlaceholderText: {
+		fontSize: 14,
+		color: colors.textSecondary,
+	},
+	inlinePickerWrapper: {
+		marginTop: 12,
+		alignItems: "center",
+	},
+	pickerDoneButton: {
+		marginTop: 8,
+		paddingHorizontal: 20,
+		paddingVertical: 8,
+		borderRadius: 20,
+		backgroundColor: colors.primary,
+	},
+	pickerDoneButtonText: {
+		fontSize: 14,
+		fontWeight: "700",
+		color: colors.cardBackground,
 	},
 	statusOptions: {
 		flexDirection: "row",

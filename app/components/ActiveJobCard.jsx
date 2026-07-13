@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { colors } from "../../constants/colors";
-import { useState, useEffect } from "react";
-import SecureStore from "../../utils/storage";
 import config from "../../config/config";
+import { colors } from "../../constants/colors";
+import { getItemAsync } from "../../utils/storage";
 
 const STATUS_CONFIG = {
 	submitted: { label: "Submitted", color: colors.creditWallet, bg: "rgba(59, 158, 255, 0.12)", icon: "send" },
@@ -25,9 +25,9 @@ const ActiveJobCard = ({ job, onPress }) => {
 		const fetchShopName = async () => {
 			if (!job.shopId) return;
 			try {
-				const token = await SecureStore.getItemAsync("authToken");
+				const token = await getItemAsync("authToken");
 				const res = await fetch(`${config.apiBaseUrl}/shops/${job.shopId}`, {
-					headers: { Authorization: `Bearer ${token}` }
+					headers: { Authorization: `Bearer ${token}` },
 				});
 				const data = await res.json();
 				if (data.success && data.data?.shop?.name) {
@@ -41,7 +41,7 @@ const ActiveJobCard = ({ job, onPress }) => {
 	}, [job.shopId]);
 
 	return (
-		<TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+		<TouchableOpacity style={styles.card} onPress={onPress}>
 			<View style={styles.cardLeft}>
 				<View style={styles.iconContainer}>
 					<Feather name="printer" size={18} color={colors.printRequest} />
@@ -65,20 +65,15 @@ const ActiveJobCard = ({ job, onPress }) => {
 
 const styles = StyleSheet.create({
 	card: {
-		backgroundColor: colors.cardBackground,
-		borderRadius: 16,
-		padding: 14,
+		backgroundColor: "transparent",
+		paddingVertical: 12,
+		paddingLeft: 16,
+		paddingRight: 8,
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
 		borderBottomWidth: 1,
-		borderColor: colors.borderLight,
-		shadowColor: colors.shadowLight,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 1,
-		shadowRadius: 8,
-		elevation: 2,
-		marginBottom: 10,
+		borderBottomColor: colors.borderLight,
 	},
 	cardLeft: {
 		flexDirection: "row",
