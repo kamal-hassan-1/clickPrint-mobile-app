@@ -168,7 +168,7 @@ const HomePage = () => {
 
 						<TouchableOpacity style={styles.balanceCard}>
 							<View style={styles.balanceContent}>
-								<Text style={styles.balanceLabel}>Current Balance</Text>
+								<Text style={styles.balanceLabel}>Current Balaaaaaance</Text>
 								<Text style={styles.balanceCurrency}>Rs.</Text>
 								<Text style={styles.balanceAmount}>{accountBalance}</Text>
 							</View>
@@ -223,11 +223,11 @@ const HomePage = () => {
 								<View style={styles.innerListContainer}>
 									{drafts.map((draft) => (
 										<DraftItem
-										key={draft._id}
-										draft={draft}
-										onPress={() => handleDraftPress(draft)}
-										onDelete={handleDeleteDraft}
-									/>
+											key={draft._id}
+											draft={draft}
+											onPress={() => handleDraftPress(draft)}
+											onDelete={handleDeleteDraft}
+										/>
 									))}
 								</View>
 							) : (
