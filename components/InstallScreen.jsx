@@ -27,6 +27,182 @@ const scrollTo = (id) => {
 	document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 };
 
+// Figure out which browser/form-factor the user is on so we can show the exact
+// menu path to install the PWA. Order matters: Edge/Opera/Samsung all embed
+// "Chrome" (or "Safari") in their UA string, so they must be tested first.
+const detectPlatform = () => {
+	if (typeof navigator === "undefined") return { browser: "generic", mobile: false, ios: false };
+	const ua = navigator.userAgent;
+	const ios = isIOS();
+	const mobile = ios || /android|mobile/i.test(ua);
+	let browser = "generic";
+	if (/Edg\/|EdgiOS|EdgA/i.test(ua)) browser = "edge";
+	else if (/SamsungBrowser/i.test(ua)) browser = "samsung";
+	else if (/OPR\/|OPiOS|Opera|OPT\//i.test(ua)) browser = "opera";
+	else if (/FxiOS|Firefox/i.test(ua)) browser = "firefox";
+	else if (/CriOS|Chrome|Chromium/i.test(ua)) browser = "chrome";
+	else if (/Safari/i.test(ua)) browser = "safari";
+	return { browser, mobile, ios };
+};
+
+// Step-by-step install instructions per browser. Every branch returns real,
+// actionable steps for the user's current browser — we never tell them to
+// switch browsers. Steps are JSX so we can bold the buttons/menus they tap.
+function getInstallGuide({ browser, mobile, ios }) {
+	// ---- iOS: every browser routes through the OS "Add to Home Screen" sheet,
+	// only the entry point differs. ----
+	if (ios) {
+		if (browser === "chrome")
+			return {
+				title: "Add ClickPrint to your Home Screen",
+				steps: [
+					<>Tap the <b>Share</b> icon (a square with an up arrow) in the toolbar.</>,
+					<>Scroll down and choose <b>Add to Home Screen</b>.</>,
+					<>Tap <b>Add</b> — ClickPrint lands on your home screen like a native app.</>,
+				],
+			};
+		if (browser === "edge")
+			return {
+				title: "Add ClickPrint to your Home Screen",
+				steps: [
+					<>Tap the <b>⋯</b> menu at the bottom, then choose <b>Share</b>.</>,
+					<>Scroll down and choose <b>Add to Home Screen</b>.</>,
+					<>Tap <b>Add</b> to finish.</>,
+				],
+			};
+		if (browser === "firefox")
+			return {
+				title: "Add ClickPrint to your Home Screen",
+				steps: [
+					<>Tap the <b>☰</b> menu, then choose <b>Share</b>.</>,
+					<>Choose <b>Add to Home Screen</b> from the share sheet.</>,
+					<>Tap <b>Add</b> to finish.</>,
+				],
+			};
+		// Safari (and any other iOS browser)
+		return {
+			title: "Add ClickPrint to your Home Screen",
+			steps: [
+				<>Tap the <b>Share</b> icon (a square with an up arrow) in Safari&apos;s toolbar.</>,
+				<>Scroll down and choose <b>Add to Home Screen</b>.</>,
+				<>Tap <b>Add</b> — ClickPrint appears like a native app.</>,
+			],
+		};
+	}
+
+	// ---- Chrome (Android + desktop) ----
+	if (browser === "chrome")
+		return mobile
+			? {
+					title: "Install ClickPrint",
+					steps: [
+						<>Tap the <b>⋮</b> menu in the top-right corner.</>,
+						<>Tap <b>Add to Home screen</b> (or <b>Install app</b>).</>,
+						<>Tap <b>Install</b> to confirm.</>,
+					],
+				}
+			: {
+					title: "Install ClickPrint",
+					steps: [
+						<>Click the <b>install</b> icon (a screen with a down arrow) at the right of the address bar. If it isn&apos;t there, open the <b>⋮</b> menu.</>,
+						<>Choose <b>Install ClickPrint</b>.</>,
+						<>Click <b>Install</b> to confirm.</>,
+					],
+				};
+
+	// ---- Microsoft Edge (Android + desktop) ----
+	if (browser === "edge")
+		return mobile
+			? {
+					title: "Install ClickPrint",
+					steps: [
+						<>Tap the <b>⋯</b> menu at the bottom.</>,
+						<>Tap <b>Add to phone</b> (under <b>Apps</b>, choose <b>Install this site as an app</b>).</>,
+						<>Tap <b>Install</b> to confirm.</>,
+					],
+				}
+			: {
+					title: "Install ClickPrint",
+					steps: [
+						<>Click the <b>install</b> icon in the address bar, or open the <b>⋯</b> menu and choose <b>Apps</b>.</>,
+						<>Select <b>Install this site as an app</b>.</>,
+						<>Click <b>Install</b> to confirm.</>,
+					],
+				};
+
+	// ---- Samsung Internet (Android) ----
+	if (browser === "samsung")
+		return {
+			title: "Install ClickPrint",
+			steps: [
+				<>Tap the <b>≡</b> menu (or the <b>install</b> icon in the toolbar).</>,
+				<>Tap <b>Add page to</b>, then <b>Home screen</b>.</>,
+				<>Tap <b>Add</b> to confirm.</>,
+			],
+		};
+
+	// ---- Opera (Android + desktop) ----
+	if (browser === "opera")
+		return mobile
+			? {
+					title: "Install ClickPrint",
+					steps: [
+						<>Tap the Opera <b>menu</b> (the <b>O</b> or <b>⋮</b> icon).</>,
+						<>Tap <b>Home screen</b> (or <b>Add to Home screen</b>).</>,
+						<>Tap <b>Add</b> to confirm.</>,
+					],
+				}
+			: {
+					title: "Install ClickPrint",
+					steps: [
+						<>Click the <b>install</b> icon in the address bar, or open the Opera <b>menu</b>.</>,
+						<>Choose <b>Install ClickPrint</b>.</>,
+						<>Click <b>Install</b> to confirm.</>,
+					],
+				};
+
+	// ---- Firefox (Android installs PWAs; desktop keeps it as a pinned web app) ----
+	if (browser === "firefox")
+		return mobile
+			? {
+					title: "Install ClickPrint",
+					steps: [
+						<>Tap the <b>⋮</b> menu in the toolbar.</>,
+						<>Tap <b>Install</b> (or <b>Add to Home screen</b>).</>,
+						<>Confirm to add ClickPrint to your home screen.</>,
+					],
+				}
+			: {
+					title: "Keep ClickPrint one click away",
+					steps: [
+						<>Tap the <b>Install ClickPrint</b> button above to open the app.</>,
+						<>To keep it handy, open the <b>≡</b> menu and choose <b>Bookmark current tab</b>, or drag this tab to your bookmarks bar.</>,
+						<>Reopen it any time from your bookmarks — it runs full-screen like an app.</>,
+					],
+				};
+
+	// ---- Safari on macOS (Add to Dock) ----
+	if (browser === "safari")
+		return {
+			title: "Add ClickPrint to your Dock",
+			steps: [
+				<>Click the <b>Share</b> icon in Safari&apos;s toolbar.</>,
+				<>Choose <b>Add to Dock</b>.</>,
+				<>Click <b>Add</b> — ClickPrint opens in its own window like an app.</>,
+			],
+		};
+
+	// ---- Anything else ----
+	return {
+		title: "Install ClickPrint",
+		steps: [
+			<>Open your browser&apos;s <b>menu</b>.</>,
+			<>Look for <b>Install app</b> or <b>Add to Home Screen</b>.</>,
+			<>Confirm to add ClickPrint to your device.</>,
+		],
+	};
+}
+
 export default function InstallScreen() {
 	const [canInstall, setCanInstall] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
@@ -49,7 +225,9 @@ export default function InstallScreen() {
 	// on a native renderer if it somehow gets there.
 	if (Platform.OS !== "web") return null;
 
-	const ios = isIOS();
+	const platform = detectPlatform();
+	const ios = platform.ios;
+	const guide = getInstallGuide(platform);
 
 	const handleInstall = async () => {
 		const promptEvent = window.__bipEvent;
@@ -102,33 +280,14 @@ export default function InstallScreen() {
 							Works on Android &amp; iOS · No app store needed
 						</div>
 
-						{(showHelp || !canInstall) && (
+						{showHelp && (
 							<div id="install" className="cp-help cp-rise" style={{ animationDelay: ".3s" }}>
-								{ios ? (
-									<>
-										<div className="cp-help-title">Add to your Home Screen</div>
-										<ol className="cp-help-steps">
-											<li>
-												Tap the <b>Share</b> icon in Safari&apos;s toolbar.
-											</li>
-											<li>
-												Scroll down and choose <b>Add to Home Screen</b>.
-											</li>
-											<li>
-												Tap <b>Add</b> — ClickPrint appears like a native app.
-											</li>
-										</ol>
-									</>
-								) : (
-									<>
-										<div className="cp-help-title">Installing on this browser</div>
-										<p className="cp-help-text">
-											Tap <b>{ctaLabel}</b> above. If nothing appears, open this page in
-											<b> Chrome</b> or <b>Edge</b>, then use the browser menu and choose{" "}
-											<b>Install app</b> / <b>Add to Home Screen</b>.
-										</p>
-									</>
-								)}
+								<div className="cp-help-title">{guide.title}</div>
+								<ol className="cp-help-steps">
+									{guide.steps.map((step, i) => (
+										<li key={i}>{step}</li>
+									))}
+								</ol>
 							</div>
 						)}
 					</div>
